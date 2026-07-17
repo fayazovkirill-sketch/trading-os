@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v38</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v37</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -748,9 +748,9 @@ function dayRiskBase(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
  // Убытки вычитаются отдельно, открытая и защищённая стопом прибыль не учитываются.
  const storedBase=Number(state.dayStartBalance||0);
  const closedProfit=closedPositivePnlForDay(dayKey,mode);
- const storedComputed=Math.round((storedBase+closedProfit)*100)/100;
- const balanceComputed=Math.round((Number(state.balance||0)+realizedLossForDay(dayKey,mode))*100)/100;
- return Math.max(0,storedComputed,balanceComputed)
+ const computed=Math.round((storedBase+closedProfit)*100)/100;
+ if(computed<0&&Number(state.balance||0)>0)return Math.round(Number(state.balance)*100)/100;
+ return Math.max(0,computed)
 }
 function rebaseBalanceEvents(){
  state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -1683,7 +1683,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='38';
+const APP_VERSION='37';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
