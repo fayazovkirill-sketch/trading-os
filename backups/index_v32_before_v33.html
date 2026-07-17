@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v33</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v32</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -1634,7 +1634,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='33';
+const APP_VERSION='32';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -1709,37 +1709,6 @@ function rowsToCsv(headers,rows){
  rows.forEach(row=>lines.push(headers.map(h=>csvCell(row[h])).join(';')));
  return '\ufeff'+lines.join('\r\n')
 }
-const CP1251_REVERSE=(()=>{
- const chars='ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—�™љ›њќћџ ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя';
- const map={};
- for(let i=0;i<chars.length;i++)map[chars[i]]=i+128;
- return map
-})();
-function repairMojibakeString(value){
- if(typeof value!=='string'||!value)return value;
- if(!/[РСÐÑ�]/.test(value))return value;
- const bytes=[];
- for(const ch of value){
-  const code=ch.charCodeAt(0);
-  if(code<128)bytes.push(code);
-  else if(CP1251_REVERSE[ch]!=null)bytes.push(CP1251_REVERSE[ch]);
-  else return value
- }
- let decoded='';
- try{decoded=new TextDecoder('utf-8',{fatal:true}).decode(new Uint8Array(bytes))}
- catch(_){return value}
- if(!decoded||decoded===value||decoded.includes('�'))return value;
- return /[А-Яа-яЁё]/.test(decoded)?decoded:value
-}
-function cleanExportText(value){
- if(Array.isArray(value))return value.map(cleanExportText);
- if(value&&typeof value==='object'){
-  const out={};
-  Object.entries(value).forEach(([k,v])=>out[k]=cleanExportText(v));
-  return out
- }
- return repairMojibakeString(value)
-}
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({
   trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
@@ -1770,7 +1739,7 @@ function exportAnalysisFiles(){
    TRADE_CONFIRMATIONS:tradeConf.length,
    BALANCE_EVENTS:balance.length
   },
-  tables:cleanExportText({
+  tables:{
    TRADES:trades,
    ENTRIES:entries,
    EXITS:exits,
@@ -1778,7 +1747,7 @@ function exportAnalysisFiles(){
    TRADE_OT:tradeOt,
    TRADE_CONFIRMATIONS:tradeConf,
    BALANCE_EVENTS:balance
-  })
+  }
  };
  downloadBlob(`TradingOS_ANALYSIS_EXPORT_${stamp}.json`,JSON.stringify(exportPayload,null,2),'application/json;charset=utf-8');
  alert('Экспорт для анализа подготовлен одним JSON-файлом. На телефоне файл появится в папке загрузок.')
