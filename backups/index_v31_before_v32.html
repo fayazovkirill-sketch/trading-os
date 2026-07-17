@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v32</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v31</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -1634,7 +1634,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='32';
+const APP_VERSION='31';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -1722,35 +1722,15 @@ function exportAnalysisFiles(){
   (t.confirmations||[]).forEach(v=>tradeConf.push({trade_id:t.id,confirmation:v}));
  });
  const balance=(state.balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''}));
+ const packs=[
+  ['TRADES',trades],['ENTRIES',entries],['EXITS',exits],['STOP_EVENTS',stops],['TRADE_OT',tradeOt],['TRADE_CONFIRMATIONS',tradeConf],['BALANCE_EVENTS',balance]
+ ];
  const stamp=fileStamp();
- const exportPayload={
-  format:'TradingOSAnalysisExport',
-  exportVersion:1,
-  appVersion:APP_VERSION,
-  schemaVersion:APP_SCHEMA_VERSION,
-  storageKey:STORAGE_KEY,
-  exportedAt:nowIso(),
-  rowCounts:{
-   TRADES:trades.length,
-   ENTRIES:entries.length,
-   EXITS:exits.length,
-   STOP_EVENTS:stops.length,
-   TRADE_OT:tradeOt.length,
-   TRADE_CONFIRMATIONS:tradeConf.length,
-   BALANCE_EVENTS:balance.length
-  },
-  tables:{
-   TRADES:trades,
-   ENTRIES:entries,
-   EXITS:exits,
-   STOP_EVENTS:stops,
-   TRADE_OT:tradeOt,
-   TRADE_CONFIRMATIONS:tradeConf,
-   BALANCE_EVENTS:balance
-  }
- };
- downloadBlob(`TradingOS_ANALYSIS_EXPORT_${stamp}.json`,JSON.stringify(exportPayload,null,2),'application/json;charset=utf-8');
- alert('Экспорт для анализа подготовлен одним JSON-файлом. На телефоне файл появится в папке загрузок.')
+ packs.forEach(([name,rows])=>{
+  const headers=rows.length?Object.keys(rows[0]):['no_data'];
+  downloadBlob(`TradingOS_${name}_${stamp}.csv`,rowsToCsv(headers,rows),'text/csv;charset=utf-8')
+ });
+ alert('Экспорт подготовлен. На телефоне файлы появятся в папке загрузок.')
 }
 
 function balanceOpsTotals(){
