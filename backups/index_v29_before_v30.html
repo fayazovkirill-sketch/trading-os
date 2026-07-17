@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v30</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v29</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -249,8 +249,8 @@ input,select,textarea,button{min-height:44px}
       <button data-value="Backtest">Backtest</button>
     </div>
     <div id="backtestDate" class="row hidden" style="margin-top:10px">
-      <div class="field"><label>Дата, дд.мм.гг</label><input id="tradeDate" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="16.07.26"></div>
-      <div class="field"><label>Время, чч:мм</label><input id="tradeTime" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="12:30"></div>
+      <div class="field"><label>Дата, дд.мм.гг</label><input id="tradeDate" inputmode="numeric" placeholder="16.07.26"></div>
+      <div class="field"><label>Время, чч:мм</label><input id="tradeTime" inputmode="numeric" placeholder="12:30"></div>
     </div>
   </div>
 
@@ -1053,24 +1053,6 @@ function validBacktestDateTime(){
  }
  return true
 }
-function maskBacktestDate(value){
- const digits=String(value||'').replace(/\D/g,'').slice(0,6);
- if(digits.length<=2)return digits;
- if(digits.length<=4)return `${digits.slice(0,2)}.${digits.slice(2)}`;
- return `${digits.slice(0,2)}.${digits.slice(2,4)}.${digits.slice(4)}`
-}
-function maskBacktestTime(value){
- const digits=String(value||'').replace(/\D/g,'').slice(0,4);
- if(digits.length<=2)return digits;
- return `${digits.slice(0,2)}:${digits.slice(2)}`
-}
-function applyBacktestDateTimeMasks(){
- const date=$('#tradeDate'),time=$('#tradeTime');
- date.addEventListener('input',()=>{date.value=maskBacktestDate(date.value)});
- date.addEventListener('blur',()=>{date.value=maskBacktestDate(date.value)});
- time.addEventListener('input',()=>{time.value=maskBacktestTime(time.value)});
- time.addEventListener('blur',()=>{time.value=maskBacktestTime(time.value)})
-}
 $('#saveTrade').onclick=()=>{
  const r=calcRisk();if(!r.ok)return alert('Сделка не проходит проверку риска или обязательных полей.');
  if(!validBacktestDateTime())return;
@@ -1627,7 +1609,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='30';
+const APP_VERSION='29';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -1800,7 +1782,6 @@ $('#clearJournal').onclick=()=>{
 }
 $('#resetAll').onclick=()=>{if(confirm('Удалить все локальные данные?')){localStorage.removeItem('tradingOS_v3');location.reload()}}
 
-applyBacktestDateTimeMasks();
 setTheme(state.theme||'light');
 $('#volume1').value='0.01';$('#volume2').value='0.01';
 $('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';
