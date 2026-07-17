@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v35</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v34</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -689,61 +689,22 @@ function save(){
  updateStorageStatus()
 }
 function openTrades(){return state.trades.filter(t=>t.status==='open')}
-function parseBacktestDateKey(value){
- const m=String(value||'').match(/^(\d{2})\.(\d{2})\.(\d{2}|\d{4})/);
- if(!m)return '';
- const year=m[3].length===2?'20'+m[3]:m[3];
- const key=`${year}-${m[2]}-${m[1]}`;
- const d=new Date(`${key}T00:00:00`);
- return isNaN(d)||d.getFullYear()!=Number(year)||d.getMonth()+1!=Number(m[2])||d.getDate()!=Number(m[1])?'':key
-}
-function tradeRiskDateKey(t){
- if(t&&t.mode==='Backtest'){
-  return parseBacktestDateKey(t.date)||''
- }
- return appDateKey((t&&t.createdAt)||(t&&t.closedAt)||new Date())
-}
-function activeRiskDateKey(){
- if(form.mode==='Backtest'){
-  return parseBacktestDateKey($('#tradeDate').value.trim())||appDateKey()
- }
- return appDateKey()
-}
-function activeRiskMode(){return form.mode==='Backtest'?'Backtest':'Real'}
-function sameRiskMode(t,mode){
- return mode==='Backtest'?t.mode==='Backtest':t.mode!=='Backtest'
-}
-function realizedLossForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
+function todaysRealizedLoss(){
+ const today=appDateKey();
  return state.trades.reduce((sum,t)=>{
-  if(!sameRiskMode(t,mode))return sum;
-  const tradeKey=tradeRiskDateKey(t);
-  return sum+(t.exits||[]).filter(e=>{
-   const eventKey=t.mode==='Backtest'?tradeKey:(e.at?appDateKey(e.at):tradeKey);
-   return eventKey===dayKey&&Number(e.pnl)<0
-  }).reduce((s,e)=>s+Math.abs(Number(e.pnl)),0)
+  return sum+(t.exits||[]).filter(e=>e.at&&appDateKey(e.at)===today&&Number(e.pnl)<0).reduce((s,e)=>s+Math.abs(Number(e.pnl)),0)
  },0)
 }
-function todaysRealizedLoss(){return realizedLossForDay(appDateKey(),'Real')}
-function closedPositivePnlForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
+function todaysClosedPositivePnl(){
+ const today=appDateKey();
  return state.trades
-  .filter(t=>{
-   if(!sameRiskMode(t,mode))return false;
-   const closeKey=t.mode==='Backtest'?tradeRiskDateKey(t):(t.closedAt?appDateKey(t.closedAt):'');
-   return closeKey===dayKey&&t.balanceApplied
-  })
+  .filter(t=>t.closedAt&&appDateKey(t.closedAt)===today&&t.balanceApplied)
   .reduce((s,t)=>s+Math.max(0,Number(t.pnl||0)),0)
 }
-function todaysClosedPositivePnl(){return closedPositivePnlForDay(appDateKey(),'Real')}
-function occupiedRiskForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
- return openTrades().filter(t=>{
-  if(mode==='Backtest')return t.mode==='Backtest'&&tradeRiskDateKey(t)===dayKey;
-  return t.mode!=='Backtest'
- }).reduce((s,t)=>s+Math.max(0,Number(t.currentRisk||0)),0)
-}
-function dayRiskBase(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
+function dayRiskBase(){
  // База дня растёт только на полностью закрытую положительную прибыль.
  // Убытки вычитаются отдельно, открытая и защищённая стопом прибыль не учитываются.
- return Math.round((Number(state.dayStartBalance||0)+closedPositivePnlForDay(dayKey,mode))*100)/100
+ return Math.round((Number(state.dayStartBalance||0)+todaysClosedPositivePnl())*100)/100
 }
 function rebaseBalanceEvents(){
  state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -781,16 +742,15 @@ function removeTradeBalanceEvent(tradeId){
  state.balanceEvents=(state.balanceEvents||[]).filter(e=>!(e.type==='trade_close'&&e.trade_id===tradeId));
  rebaseBalanceEvents()
 }
-function occupiedRisk(){return occupiedRiskForDay(appDateKey(),'Real')}
-function dayLimit(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return dayRiskBase(dayKey,mode)*state.dayRiskPct/100}
-function dayRemaining(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return Math.max(0,dayLimit(dayKey,mode)-realizedLossForDay(dayKey,mode)-occupiedRiskForDay(dayKey,mode))}
-function tradeAllowed(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return Math.min(state.balance*state.riskPct/100,dayRemaining(dayKey,mode))}
+function occupiedRisk(){return openTrades().reduce((s,t)=>s+Math.max(0,Number(t.currentRisk||0)),0)}
+function dayLimit(){return dayRiskBase()*state.dayRiskPct/100}
+function dayRemaining(){return Math.max(0,dayLimit()-todaysRealizedLoss()-occupiedRisk())}
+function tradeAllowed(){return Math.min(state.balance*state.riskPct/100,dayRemaining())}
 function updateHeader(){
  updateDay();
- const key=activeRiskDateKey();
  $('#kBalance').textContent=money(state.balance);
  $('#kRisk').textContent=money(state.balance*state.riskPct/100);
- $('#kDay').textContent=money(dayRemaining(key))+' / '+money(dayLimit(key));
+ $('#kDay').textContent=money(dayRemaining())+' / '+money(dayLimit());
  $('#kOpen').textContent=openTrades().length;
 }
 function setTheme(t){state.theme=t;document.documentElement.dataset.theme=t==='dark'?'dark':'';save()}
@@ -923,7 +883,6 @@ $$('#modeSeg button').forEach(b=>b.onclick=()=>{
  form.mode=b.dataset.value;state.mode=form.mode;save();
  $$('#modeSeg button').forEach(x=>x.classList.toggle('active',x===b));
  $('#backtestDate').classList.toggle('hidden',form.mode!=='Backtest');
- updateHeader();calcRisk();
 });
 $$('.direction button').forEach(b=>b.onclick=()=>{
  form.direction=b.dataset.dir;$$('.direction button').forEach(x=>x.classList.toggle('active',x===b));saveInstrumentDraft(activeInstrument);calcRisk()
@@ -1107,11 +1066,10 @@ function maskBacktestTime(value){
 }
 function applyBacktestDateTimeMasks(){
  const date=$('#tradeDate'),time=$('#tradeTime');
- const recalc=()=>{updateHeader();calcRisk()};
- date.addEventListener('input',()=>{date.value=maskBacktestDate(date.value);recalc()});
- date.addEventListener('blur',()=>{date.value=maskBacktestDate(date.value);recalc()});
- time.addEventListener('input',()=>{time.value=maskBacktestTime(time.value);recalc()});
- time.addEventListener('blur',()=>{time.value=maskBacktestTime(time.value);recalc()})
+ date.addEventListener('input',()=>{date.value=maskBacktestDate(date.value)});
+ date.addEventListener('blur',()=>{date.value=maskBacktestDate(date.value)});
+ time.addEventListener('input',()=>{time.value=maskBacktestTime(time.value)});
+ time.addEventListener('blur',()=>{time.value=maskBacktestTime(time.value)})
 }
 $('#saveTrade').onclick=()=>{
  const r=calcRisk();if(!r.ok)return alert('Сделка не проходит проверку риска или обязательных полей.');
@@ -1676,7 +1634,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='35';
+const APP_VERSION='34';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -1782,87 +1740,23 @@ function cleanExportText(value){
  }
  return repairMojibakeString(value)
 }
-function marketGroupForInstrument(instrument){
- if(['GOLD','SILVER'].includes(instrument))return 'Металлы';
- if(['BR','WTI'].includes(instrument))return 'Нефть';
- if(['EURUSD','USDCAD'].includes(instrument))return 'Валюты';
- return 'Другое'
-}
-function sessionForTime(hour,minute=0){
- if(hour===''||hour===null||hour===undefined||isNaN(Number(hour)))return '';
- const mins=Number(hour)*60+Number(minute||0);
- if(mins>=3*60&&mins<10*60)return 'Азия';
- if(mins>=10*60&&mins<16*60+30)return 'Европа';
- if(mins>=16*60+30&&mins<19*60)return 'Европа+США';
- if(mins>=19*60&&mins<24*60)return 'США';
- return 'Ночь/вне сессии'
-}
-function weekdayForDateKey(dateKey){
- const m=String(dateKey||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
- if(!m)return '';
- const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
- if(isNaN(d))return '';
- return ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][d.getDay()]
-}
-function tradeDateParts(t){
- if(t&&t.mode==='Backtest'){
-  const m=String(t.date||'').match(/^(\d{2})\.(\d{2})\.(\d{2}|\d{4})(?:\s+([01]\d|2[0-3]):([0-5]\d))?/);
-  if(!m)return {dateKey:'',hour:'',minute:''};
-  const year=m[3].length===2?'20'+m[3]:m[3];
-  return {dateKey:`${year}-${m[2]}-${m[1]}`,hour:m[4]===undefined?'':Number(m[4]),minute:m[5]===undefined?'':Number(m[5])}
- }
- const raw=(t&&((t.date&&t.mode==='Real')?t.date:t.createdAt))||(t&&t.closedAt)||'';
- const d=new Date(raw);
- if(isNaN(d))return {dateKey:'',hour:'',minute:''};
- const options={year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'};
- const tz=appTimeZone();if(tz)options.timeZone=tz;
- const parts=new Intl.DateTimeFormat('en-GB',options).formatToParts(d);
- const get=type=>(parts.find(x=>x.type===type)||{}).value||'';
- return {dateKey:`${get('year')}-${get('month')}-${get('day')}`,hour:Number(get('hour')),minute:Number(get('minute'))}
-}
-function tradeReportMeta(t){
- const parts=tradeDateParts(t);
- return {
-  trade_date_key:parts.dateKey,
-  trade_hour:parts.hour,
-  weekday:weekdayForDateKey(parts.dateKey),
-  session:sessionForTime(parts.hour,parts.minute),
-  market_group:marketGroupForInstrument(t.instrument)
- }
-}
-function tradeContextFields(t){
- const meta=tradeReportMeta(t);
- return {
-  trade_id:t.id,
-  instrument:t.instrument,
-  direction:t.direction,
-  strategy:t.strategy,
-  subtype:t.subtype||'',
-  trade_date_key:meta.trade_date_key,
-  trade_hour:meta.trade_hour,
-  weekday:meta.weekday,
-  session:meta.session,
-  market_group:meta.market_group
- }
-}
 function exportAnalysisFiles(){
- const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
+ const trades=(state.trades||[]).map(t=>({
   trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
  }));
  const entries=[];const exits=[];const stops=[];const tradeOt=[];const tradeConf=[];
  (state.trades||[]).forEach(t=>{
-  const ctx=tradeContextFields(t);
-  (t.entries||[]).forEach((e,i)=>entries.push({...ctx,entry_no:i+1,price:e.price,volume:e.volume,risk_share:e.riskShare,max_allowed_volume:e.maxAllowedVolume??'',level:e.level||'',execution:e.execution||'',created_at:t.createdAt||''}));
-  (t.exits||[]).forEach((e,i)=>exits.push({...ctx,exit_no:i+1,reason:e.reason||'',group:e.group||'',label:e.label||'',price:e.price,volume:e.volume,pnl:e.pnl,at:e.at||'',stop_at_exit:e.stopPriceAtExit??e.stopAtExit??'',remaining_after:e.remainingAfter??'',comment:e.comment||''}));
-  (t.stops||[]).forEach((e,i)=>stops.push({...ctx,stop_no:i+1,old_stop:e.oldStop,new_stop:e.price,source:e.sourceLabel||e.source||'',risk_after:e.riskAfter,locked_profit:e.lockedProfit,at:e.at||''}));
-  (t.ot||[]).forEach(v=>tradeOt.push({...ctx,ot:v}));
-  (t.confirmations||[]).forEach(v=>tradeConf.push({...ctx,confirmation:v}));
+  (t.entries||[]).forEach((e,i)=>entries.push({trade_id:t.id,entry_no:i+1,instrument:t.instrument,direction:t.direction,price:e.price,volume:e.volume,risk_share:e.riskShare,max_allowed_volume:e.maxAllowedVolume??'',level:e.level||'',execution:e.execution||'',created_at:t.createdAt||''}));
+  (t.exits||[]).forEach((e,i)=>exits.push({trade_id:t.id,exit_no:i+1,reason:e.reason||'',group:e.group||'',label:e.label||'',price:e.price,volume:e.volume,pnl:e.pnl,at:e.at||'',stop_at_exit:e.stopPriceAtExit??e.stopAtExit??'',remaining_after:e.remainingAfter??'',comment:e.comment||''}));
+  (t.stops||[]).forEach((e,i)=>stops.push({trade_id:t.id,stop_no:i+1,old_stop:e.oldStop,new_stop:e.price,source:e.sourceLabel||e.source||'',risk_after:e.riskAfter,locked_profit:e.lockedProfit,at:e.at||''}));
+  (t.ot||[]).forEach(v=>tradeOt.push({trade_id:t.id,ot:v}));
+  (t.confirmations||[]).forEach(v=>tradeConf.push({trade_id:t.id,confirmation:v}));
  });
  const balance=(state.balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''}));
  const stamp=fileStamp();
  const exportPayload={
   format:'TradingOSAnalysisExport',
-  exportVersion:2,
+  exportVersion:1,
   appVersion:APP_VERSION,
   schemaVersion:APP_SCHEMA_VERSION,
   storageKey:STORAGE_KEY,
@@ -1912,11 +1806,9 @@ function renderSettings(){
  updateStorageStatus();
  $('#setBalance').value=moneyInput(state.balance);
  const ops=balanceOpsTotals();
- const settingsDayKey=activeRiskDateKey();
- const settingsRiskMode=activeRiskMode();
  if($('#balanceOpsSummary'))$('#balanceOpsSummary').textContent=`Внесено: ${money(ops.deposit)} · Снято: ${money(ops.withdraw)}`;$('#setRisk').value=state.riskPct;$('#setDayRisk').value=state.dayRiskPct;$('#setTimezone').value=state.timezone||'local';
  $('#instrumentSpecs').innerHTML=
- `<div class="alert good" style="margin-bottom:8px">База риска дня: ${money(dayRiskBase(settingsDayKey,settingsRiskMode))} · лимит: ${state.dayRiskPct}% = ${money(dayLimit(settingsDayKey,settingsRiskMode))} · занято: ${money(occupiedRiskForDay(settingsDayKey,settingsRiskMode)+realizedLossForDay(settingsDayKey,settingsRiskMode))}</div>`+
+ `<div class="alert good" style="margin-bottom:8px">База риска дня: ${money(dayRiskBase())} · лимит: ${state.dayRiskPct}% = ${money(dayLimit())} · занято: ${money(occupiedRisk()+todaysRealizedLoss())}</div>`+
  Object.entries(specs).map(([k,v])=>`<div class="metric" style="margin-bottom:6px"><span>${k}</span><b>${v.digits} знаков · шаг ${v.step} · контракт ${v.contract}</b></div>`).join('')
 }
 $('#setBalance').addEventListener('blur',()=>cleanMoneyField($('#setBalance')));
