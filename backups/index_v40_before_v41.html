@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v41</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v40</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -668,7 +668,7 @@ const rules={
  'Диапазон':{subtypes:['Накопление','Распределение'],methods:['Обычный','И','К-3'],groups:{normal:['Граница Д','1.6','2.0'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23'],k3:['1.6','2.4','2.6']}},
  'К-3':{methods:['К-3'],groups:{k3:['1.6','2.4','2.6']}},
  'Импульс':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
- 'Стата':{subtypes:['1.6-50-2.6','1.2-50-2.6','1.6-100-2.6'],methods:['И','К-3'],groups:{stata:['2.6']}},
+ 'Стата':{subtypes:['1.6-50-2.6','1.2-50-2.6','1.6-100-2.6'],methods:['И'],groups:{stata:['2.6']}},
  'Слабый':{subtypes:['от Т4','от Т5'],methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}}
 };
 function updateDay(){
@@ -901,7 +901,7 @@ function renderStrategy(){
  syncMethodString();
  $('#entryMethods').replaceChildren(...methods.map(v=>chipButton(v,form.methods.includes(v),()=>toggleMethod(v,methods))));
 
- const twoAllowed=$('#strategy').value!=='Стата'&&(isImpulseEntry()||isQuickDoubleEntry());
+ const twoAllowed=isImpulseEntry()||isQuickDoubleEntry();
  $('#entryCount').disabled=!twoAllowed;
  if(!twoAllowed){$('#entryCount').value='1';toggleEntry2()}
  renderEntrySelectors();
@@ -1732,7 +1732,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='41';
+const APP_VERSION='40';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
