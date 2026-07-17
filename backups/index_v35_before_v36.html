@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v36</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v35</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -736,10 +736,7 @@ function closedPositivePnlForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode(
 function todaysClosedPositivePnl(){return closedPositivePnlForDay(appDateKey(),'Real')}
 function occupiedRiskForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
  return openTrades().filter(t=>{
-  if(mode==='Backtest'){
-   const openKey=tradeRiskDateKey(t);
-   return t.mode==='Backtest'&&openKey&&dayKey&&openKey<=dayKey
-  }
+  if(mode==='Backtest')return t.mode==='Backtest'&&tradeRiskDateKey(t)===dayKey;
   return t.mode!=='Backtest'
  }).reduce((s,t)=>s+Math.max(0,Number(t.currentRisk||0)),0)
 }
@@ -1679,7 +1676,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='36';
+const APP_VERSION='35';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
