@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v31</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v30</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -505,7 +505,7 @@ function formatAppDateTime(value){
  const tz=appTimeZone();if(tz)options.timeZone=tz;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=31;
+const APP_SCHEMA_VERSION=29;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -1085,14 +1085,14 @@ $('#saveTrade').onclick=()=>{
   strategy:$('#strategy').value,subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,method:form.method,methods:[...form.methods],
   initialStop:num($('#initialStop').value),currentStop:num($('#initialStop').value),
   entries:[
-   {level:$('#entryLevel1').value,execution:$('#entryLevel1').value,price:num($('#entryPrice1').value),riskShare:num($('#riskShare1').value),volume:num($('#volume1').value),maxAllowedVolume:r.max1}
+   {level:$('#entryLevel1').value,execution:$('#entryLevel1').value,price:num($('#entryPrice1').value),riskShare:num($('#riskShare1').value),volume:num($('#volume1').value)}
   ],
   targets:[],availableTargets:availableTargetsForTrade({strategy:$('#strategy').value,method:form.method,methods:[...form.methods],subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value}),
   ot:[...form.ot],confirmations:[...form.conf],comment:$('#entryComment').value,
   initialRisk:r.actual,currentRisk:r.actual,avgPrice:r.avg,totalVolume:r.total,remainingVolume:r.total,exits:[],stops:[],
   violations:[],isReentry:$('#isReentry').value,previousTradeId:$('#prevTradeId').value
  };
- if($('#entryCount').value==='2')t.entries.push({level:$('#entryLevel2').value,execution:$('#entryLevel2').value,price:num($('#entryPrice2').value),riskShare:num($('#riskShare2').value),volume:num($('#volume2').value),maxAllowedVolume:r.max2});
+ if($('#entryCount').value==='2')t.entries.push({level:$('#entryLevel2').value,execution:$('#entryLevel2').value,price:num($('#entryPrice2').value),riskShare:num($('#riskShare2').value),volume:num($('#volume2').value)});
  t.priceDigits=instrumentSpec(t.instrument).digits;
  state.trades.push(t);
  if(state.instrumentDrafts)delete state.instrumentDrafts[t.instrument];
@@ -1208,7 +1208,6 @@ function modal(title,html){$('#modalTitle').textContent=title;$('#modalBody').in
 $('[data-close]').onclick=()=>$('#tradeModal').classList.remove('show');
 $('#tradeModal').onclick=e=>{if(e.target===$('#tradeModal'))$('#tradeModal').classList.remove('show')}
 function getTrade(id){return state.trades.find(t=>t.id===id)}
-function touchTrade(t){if(t)t.updatedAt=nowIso()}
 function showStop(id){
  const t=getTrade(id),d=specs[t.instrument].digits;
  const entryButtons=(t.entries||[]).map((e,i)=>`<button type="button" data-stop-entry="${i}">На вход ${i+1}</button>`).join('');
@@ -1249,7 +1248,6 @@ function showStop(id){
   const exactBE=Math.abs(Number(t.avgPrice)-n)<Math.pow(10,-d)/2;
   t.currentRisk=stopRiskValue(t,n);
   t.stops.push({oldStop,price:n,at:nowIso(),source:sourceIndex,sourceLabel:exactBE?'Точный БУ по средней':sourceIndex?`Стоп на вход ${sourceIndex}`:'Ручной перенос',riskAfter:t.currentRisk,lockedProfit:t.currentRisk<0?Math.abs(t.currentRisk):0});
-  touchTrade(t);
   save();$('#tradeModal').classList.remove('show');renderOpen()
  }
 }
@@ -1439,7 +1437,6 @@ function showClose(id){
     t.appliedPnl=t.pnl;
    }
   }
-  touchTrade(t);
   save();$('#tradeModal').classList.remove('show');
   if(autoCompleted){
    form.doneView=t.status==='pending'?'pending':'history';
@@ -1479,7 +1476,6 @@ function showFinalize(id){
    t.needsT5Review=false;
    t.status='done';
    t.finalizedAt=nowIso();
-   touchTrade(t);
    save();$('#tradeModal').classList.remove('show');renderDone()
   };
   return
@@ -1536,7 +1532,7 @@ function showFinalize(id){
   t.byPlan=$('#mByPlan').value||'';
   t.violations=$('#mViolations').value.split(',').map(x=>x.trim()).filter(Boolean);
   if($('#mReachedT5')){t.reachedT5=$('#mReachedT5').value;t.t5Comment=$('#mT5Comment').value}
-  t.status='done';t.finalizedAt=nowIso();touchTrade(t);save();$('#tradeModal').classList.remove('show');renderDone()
+  t.status='done';t.finalizedAt=nowIso();save();$('#tradeModal').classList.remove('show');renderDone()
  }
 }
 function reverseAppliedTradeBalance(t){
@@ -1570,7 +1566,6 @@ function undoLastExit(id){
  reverseAppliedTradeBalance(t);
  t.exits.pop();
  rebuildTradeState(t);
- touchTrade(t);
  save();$('#tradeModal').classList.remove('show');renderOpen();renderDone();updateHeader()
 }
 function undoLastStop(id){
@@ -1579,7 +1574,6 @@ function undoLastStop(id){
  if(!confirm('Отменить последний перенос стопа?'))return;
  t.stops.pop();
  rebuildTradeState(t);
- touchTrade(t);
  save();$('#tradeModal').classList.remove('show');renderOpen();renderDone()
 }
 function deleteTrade(id){
@@ -1602,7 +1596,6 @@ function showExecutionReview(id){
  $('#mSaveReview').onclick=()=>{
   t.byPlan=$('#mReviewPlan').value||'';
   t.violations=$('#mReviewViolations').value.split(',').map(x=>x.trim()).filter(Boolean);
-  touchTrade(t);
   save();$('#tradeModal').classList.remove('show');renderDone();renderOpen()
  }
 }
@@ -1634,7 +1627,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='31';
+const APP_VERSION='30';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -1711,12 +1704,12 @@ function rowsToCsv(headers,rows){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({
-  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||''
  }));
  const entries=[];const exits=[];const stops=[];const tradeOt=[];const tradeConf=[];
  (state.trades||[]).forEach(t=>{
-  (t.entries||[]).forEach((e,i)=>entries.push({trade_id:t.id,entry_no:i+1,instrument:t.instrument,direction:t.direction,price:e.price,volume:e.volume,risk_share:e.riskShare,max_allowed_volume:e.maxAllowedVolume??'',level:e.level||'',execution:e.execution||'',created_at:t.createdAt||''}));
-  (t.exits||[]).forEach((e,i)=>exits.push({trade_id:t.id,exit_no:i+1,reason:e.reason||'',group:e.group||'',label:e.label||'',price:e.price,volume:e.volume,pnl:e.pnl,at:e.at||'',stop_at_exit:e.stopPriceAtExit??e.stopAtExit??'',remaining_after:e.remainingAfter??'',comment:e.comment||''}));
+  (t.entries||[]).forEach((e,i)=>entries.push({trade_id:t.id,entry_no:i+1,instrument:t.instrument,direction:t.direction,price:e.price,volume:e.volume,risk_share:e.riskShare,level:e.level||'',execution:e.execution||'',created_at:t.createdAt||''}));
+  (t.exits||[]).forEach((e,i)=>exits.push({trade_id:t.id,exit_no:i+1,reason:e.reason||'',group:e.group||'',label:e.label||'',price:e.price,volume:e.volume,pnl:e.pnl,at:e.at||'',stop_at_exit:e.stopAtExit??'',remaining_after:e.remainingAfter??'',comment:e.comment||''}));
   (t.stops||[]).forEach((e,i)=>stops.push({trade_id:t.id,stop_no:i+1,old_stop:e.oldStop,new_stop:e.price,source:e.sourceLabel||e.source||'',risk_after:e.riskAfter,locked_profit:e.lockedProfit,at:e.at||''}));
   (t.ot||[]).forEach(v=>tradeOt.push({trade_id:t.id,ot:v}));
   (t.confirmations||[]).forEach(v=>tradeConf.push({trade_id:t.id,confirmation:v}));
