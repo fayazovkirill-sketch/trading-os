@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v46</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v45</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -820,7 +820,7 @@ function chipButton(label,active,cb){
  const b=document.createElement('button');b.type='button';b.textContent=label;b.classList.toggle('active',active);b.onclick=cb;return b
 }
 function renderStaticChips(){
- const ots=['УрГ','УрПоИ','POC','Истор','МА200','Трендовая','V(D)','V(W)','V(M)','З.ПОКУП','З.ПРОДАЖ'];
+ const ots=['УрГ','УрПоИ','POC','Истор','МА200','Трендовая','V(D)','V(W)','V(M)'];
  const conf=['СЕРЧ','Лимитка','Объёмы','МакД','Крюк'];
  $('#otChips').replaceChildren(...ots.map(v=>chipButton(v,form.ot.includes(v),()=>{form.ot=form.ot.includes(v)?form.ot.filter(x=>x!==v):[...form.ot,v];renderStaticChips();saveInstrumentDraft(activeInstrument)})));
  $('#confirmChips').replaceChildren(...conf.map(v=>chipButton(v,form.conf.includes(v),()=>{form.conf=form.conf.includes(v)?form.conf.filter(x=>x!==v):[...form.conf,v];renderStaticChips();saveInstrumentDraft(activeInstrument)})));
@@ -1900,7 +1900,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='46';
+const APP_VERSION='45';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
