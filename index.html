@@ -285,7 +285,7 @@ input,select,textarea,button{min-height:44px}
 
   <div class="card">
     <div class="row">
-      <div class="field"><label>Количество входов</label><select id="entryCount"><option value="1">1 вход</option><option value="2">2 входа</option></select></div>
+      <div class="field"><label>Количество входов</label><select id="entryCount"><option value="1">1 вход</option><option value="2">2 входа</option><option value="3">3 входа</option></select></div>
       <div class="field price-field stop-price"><label>Цена первоначального стопа</label><input id="initialStop" inputmode="decimal" placeholder="56.000"></div>
     </div>
     <div id="entry1" class="details">
@@ -331,6 +331,29 @@ input,select,textarea,button{min-height:44px}
 </div>
 <div class="step-note">Кнопки, шкала или ручной ввод · шаг по спецификации инструмента</div>
 <div class="volume-hint" id="volumeHint2"><span>Максимум: —</span></div>
+</div>
+      </div>
+    </div>
+    <div id="entry3" class="details hidden">
+      <summary>Вход 3 — добор</summary>
+      <div class="inside row">
+        <div class="field"><label id="entryLabel3">Уровень</label><select id="entryLevel3"><option>-15</option><option>14</option><option>38</option><option>Ручной</option></select></div>
+        <div class="field price-field entry-price"><label>Цена входа 3</label><input id="entryPrice3" inputmode="decimal" placeholder="56.400"></div>
+        <div class="field"><label>Доля риска, %</label><input id="riskShare3" type="number" value="33" min="0" max="100"></div>
+        <div class="field contract-field"><label>Количество контрактов</label>
+<input id="volume3" type="number" inputmode="decimal" min="0.01" step="0.01" value="0.01">
+<div class="volume-stepper">
+<button type="button" id="volumeMinus3" aria-label="Уменьшить объём">−</button>
+<input class="volume-range" id="volumeRange3" type="range" min="0.01" max="0.01" step="0.01" value="0.01">
+<button type="button" id="volumePlus3" aria-label="Увеличить объём">+</button>
+</div>
+<div class="volume-actions">
+<button type="button" id="volumeMin3">0.01</button>
+<button type="button" id="volumeHalf3">50% максимума</button>
+<button type="button" id="volumeMax3" class="primary-action">Максимум</button>
+</div>
+<div class="step-note">Кнопки, шкала или ручной ввод · шаг по спецификации инструмента</div>
+<div class="volume-hint" id="volumeHint3"><span>Максимум: —</span></div>
 </div>
       </div>
     </div>
@@ -506,7 +529,7 @@ function formatAppDateTime(value){
  const tz=appTimeZone();if(tz)options.timeZone=tz;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=34;
+const APP_SCHEMA_VERSION=35;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -572,8 +595,9 @@ function updateInstrumentPriceUI(){
  const example=sp.example;
  $('#entryPrice1').placeholder=example;
  $('#entryPrice2').placeholder=example;
+ $('#entryPrice3').placeholder=example;
  $('#initialStop').placeholder=example;
- ['entryPrice1','entryPrice2','initialStop'].forEach(id=>{
+ ['entryPrice1','entryPrice2','entryPrice3','initialStop'].forEach(id=>{
   const el=$('#'+id);
   if(el.value&&num(el.value))el.value=num(el.value).toFixed(sp.digits)
  });
@@ -595,13 +619,17 @@ function saveInstrumentDraft(instrument){
   entryCount:$('#entryCount').value,
   entryLevel1:$('#entryLevel1').value,
   entryLevel2:$('#entryLevel2').value,
+  entryLevel3:$('#entryLevel3').value,
   entryPrice1:$('#entryPrice1').value,
   entryPrice2:$('#entryPrice2').value,
+  entryPrice3:$('#entryPrice3').value,
   initialStop:$('#initialStop').value,
   riskShare1:$('#riskShare1').value,
   riskShare2:$('#riskShare2').value,
+  riskShare3:$('#riskShare3').value,
   volume1:$('#volume1').value||'0.01',
   volume2:$('#volume2').value||'0.01',
+  volume3:$('#volume3').value||'0.01',
   ot:[...form.ot],
   confirmations:[...form.conf],
   comment:$('#entryComment').value,
@@ -619,9 +647,9 @@ function loadInstrumentDraft(instrument){
   $('#strategy').value='В.5';
   renderStrategy();
   $('#tfSetup').value='M15';$('#tfEntry').value='M5';
-  $('#entryPrice1').value='';$('#entryPrice2').value='';$('#initialStop').value='';
-  $('#volume1').value='0.01';$('#volume2').value='0.01';
-  $('#riskShare1').value='100';$('#riskShare2').value='50';
+  $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';
+  $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
+  $('#riskShare1').value='100';$('#riskShare2').value='50';$('#riskShare3').value='33';
   $('#entryCount').value='1';
   $('#entryComment').value='';
   $('#isReentry').value='Нет';$('#prevTradeId').value='';
@@ -644,16 +672,20 @@ function loadInstrumentDraft(instrument){
  if(!form.methods.length)form.methods=[rules[$('#strategy').value].methods[0]];
  renderStrategy();
  $('#tfSetup').value=d.tfSetup||'M15';$('#tfEntry').value=d.tfEntry||'M5';
- $('#entryCount').value=d.entryCount||'1';
+ $('#entryCount').value=isRangeGridEntry()?'3':(d.entryCount||'1');
  $('#entryLevel1').value=[...$('#entryLevel1').options].some(o=>o.value===d.entryLevel1)?d.entryLevel1:$('#entryLevel1').value;
  $('#entryLevel2').value=[...$('#entryLevel2').options].some(o=>o.value===d.entryLevel2)?d.entryLevel2:$('#entryLevel2').value;
+ $('#entryLevel3').value=[...$('#entryLevel3').options].some(o=>o.value===d.entryLevel3)?d.entryLevel3:$('#entryLevel3').value;
  $('#entryPrice1').value=d.entryPrice1||'';
  $('#entryPrice2').value=d.entryPrice2||'';
+ $('#entryPrice3').value=d.entryPrice3||'';
  $('#initialStop').value=d.initialStop||'';
- $('#riskShare1').value=d.riskShare1||'100';
- $('#riskShare2').value=d.riskShare2||'50';
+ $('#riskShare1').value=d.riskShare1||(isRangeGridEntry()?'34':'100');
+ $('#riskShare2').value=d.riskShare2||(isRangeGridEntry()?'33':'50');
+ $('#riskShare3').value=d.riskShare3||'33';
  $('#volume1').value=d.volume1||'0.01';
  $('#volume2').value=d.volume2||'0.01';
+ $('#volume3').value=d.volume3||'0.01';
  $('#entryComment').value=d.comment||'';
  $('#isReentry').value=d.isReentry||'Нет';
  $('#prevTradeId').value=d.previousTradeId||'';
@@ -671,7 +703,7 @@ const rules={
  'В+И':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
  'ВС':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
  'ВвД':{methods:['СЕРЧ','Лимитка','И'],groups:{base:['Граница Д','Т4','Т6'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
- 'Диапазон':{subtypes:['Накопление','Распределение'],methods:['Обычный','И','К-3'],groups:{normal:['Граница Д','1.6','2.0'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23'],k3:['1.6','2.4','2.6']}},
+ 'Диапазон':{subtypes:['Накопление','Распределение'],methods:['Обычный','По сетке','И','К-3'],groups:{normal:['Граница Д','1.6','2.0'],grid:['Граница Д','1.6 Д','2.0 Д'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23'],k3:['1.6','2.4','2.6']}},
  'К-3':{methods:['К-3'],groups:{k3:['1.6','2.4','2.6']}},
  'Импульс':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
  'По сетке':{subtypes:['И','ВТ5','В+И'],methods:['И','СЕРЧ','Лимитка'],groups:{grid:['2.6','3.6','4.23']}},
@@ -835,6 +867,7 @@ function syncMethodString(){
 function isImpulseEntry(){return form.methods.includes('И')}
 function isWolfStrategy(s=$('#strategy').value){return ['В.5','В+И','ВС','ВвД'].includes(s)}
 function isQuickDoubleEntry(){return form.methods.includes('СЕРЧ')&&form.methods.includes('Лимитка')}
+function isRangeGridEntry(){return $('#strategy').value==='Диапазон'&&form.methods.includes('По сетке')}
 function setSelectOptions(select,values,preferred){
  const old=select.value;
  select.replaceChildren(...values.map(v=>new Option(v,v)));
@@ -843,24 +876,31 @@ function setSelectOptions(select,values,preferred){
 }
 function renderEntrySelectors(){
  const s=$('#strategy').value;
- const l1=$('#entryLabel1'),l2=$('#entryLabel2'),e1=$('#entryLevel1'),e2=$('#entryLevel2');
- if(isImpulseEntry()){
-  l1.textContent='Уровень входа';l2.textContent='Уровень входа';
-  setSelectOptions(e1,['50','23','-15','Ручной'],'50');
-  setSelectOptions(e2,['23','50','-15','Ручной'],'23');
+ const l1=$('#entryLabel1'),l2=$('#entryLabel2'),l3=$('#entryLabel3'),e1=$('#entryLevel1'),e2=$('#entryLevel2'),e3=$('#entryLevel3');
+ if(isRangeGridEntry()){
+  l1.textContent='Уровень сетки';l2.textContent='Уровень сетки';l3.textContent='Уровень сетки';
+  setSelectOptions(e1,['38'],'38');setSelectOptions(e2,['14'],'14');setSelectOptions(e3,['-15'],'-15');
+ }else if(isImpulseEntry()){
+  l1.textContent='Уровень входа';l2.textContent='Уровень входа';l3.textContent='Уровень входа';
+ setSelectOptions(e1,['50','23','-15','Ручной'],'50');
+ setSelectOptions(e2,['23','50','-15','Ручной'],'23');
+  setSelectOptions(e3,['-15','23','50','Ручной'],'-15');
  }else if(form.methods.includes('К-3')){
   l1.textContent='Уровень входа';l2.textContent='Уровень входа';
   setSelectOptions(e1,['23','38','Ручной'],'23');
   setSelectOptions(e2,['38','23','Ручной'],'38');
+  setSelectOptions(e3,['Ручной'],'Ручной');
  }else if(form.methods.includes('СЕРЧ')||form.methods.includes('Лимитка')){
-  l1.textContent='Исполнение';l2.textContent='Исполнение';
+  l1.textContent='Исполнение';l2.textContent='Исполнение';l3.textContent='Исполнение';
   const vals=form.methods.filter(x=>x==='СЕРЧ'||x==='Лимитка');
   setSelectOptions(e1,vals,vals.includes('СЕРЧ')?'СЕРЧ':vals[0]);
   setSelectOptions(e2,vals,vals.includes('Лимитка')?'Лимитка':vals[0]);
+  setSelectOptions(e3,['Ручной'],'Ручной');
  }else{
-  l1.textContent='Уровень / способ';l2.textContent='Уровень / способ';
+  l1.textContent='Уровень / способ';l2.textContent='Уровень / способ';l3.textContent='Уровень / способ';
   setSelectOptions(e1,['Ручной'],'Ручной');
   setSelectOptions(e2,['Ручной'],'Ручной');
+  setSelectOptions(e3,['Ручной'],'Ручной');
  }
 }
 function allowsCombinedQuickEntry(strategy,subtype){
@@ -913,13 +953,20 @@ function renderStrategy(){
  syncMethodString();
  $('#entryMethods').replaceChildren(...methods.map(v=>chipButton(v,form.methods.includes(v),()=>toggleMethod(v,methods))));
 
+ const entryCount=$('#entryCount');
+ const rangeGrid=isRangeGridEntry();
  const twoAllowed=$('#strategy').value!=='Стата'&&(isImpulseEntry()||isQuickDoubleEntry());
- $('#entryCount').disabled=!twoAllowed;
- if(!twoAllowed){$('#entryCount').value='1';toggleEntry2()}
+ entryCount.querySelector('option[value="3"]').hidden=!rangeGrid;
+ entryCount.querySelector('option[value="3"]').disabled=!rangeGrid;
+ entryCount.disabled=!twoAllowed&&!rangeGrid;
+ if(rangeGrid){entryCount.value='3';toggleEntry2()}
+ else if(!twoAllowed){entryCount.value='1';toggleEntry2()}
  renderEntrySelectors();
 
  const hint=$('#impulseStopHint');
- if(isImpulseEntry()){
+ if(isRangeGridEntry()){
+  hint.innerHTML='<b>Вход по сетке:</b> уровни 38 / 14 / -15. Стоп всегда за уровнем -38; точную цену стопа введи вручную.';
+ }else if(isImpulseEntry()){
   hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.';
  }else{
   hint.textContent='Средняя цена считается взвешенно по объёмам. Для двух входов сумма долей риска должна быть 100%.';
@@ -948,19 +995,24 @@ $$('.direction button').forEach(b=>b.onclick=()=>{
  form.direction=b.dataset.dir;$$('.direction button').forEach(x=>x.classList.toggle('active',x===b));saveInstrumentDraft(activeInstrument);calcRisk()
 });
 function toggleEntry2(resetShares=true){
- const two=$('#entryCount').value==='2';$('#entry2').classList.toggle('hidden',!two);
+ const count=Number($('#entryCount').value||1);
+ const two=count>=2,three=count>=3;
+ $('#entry2').classList.toggle('hidden',!two);
+ $('#entry3').classList.toggle('hidden',!three);
  if(resetShares){
-  $('#riskShare1').value=two?50:100;
-  $('#riskShare2').value=50
+  $('#riskShare1').value=three?34:two?50:100;
+  $('#riskShare2').value=three?33:50;
+  $('#riskShare3').value=33;
  }
  calcRisk()
 }
 $('#entryCount').onchange=()=>{toggleEntry2();saveInstrumentDraft(activeInstrument);calcRisk()};
 
 function avgEntry(){
- const p1=num($('#entryPrice1').value),v1=num($('#volume1').value), two=$('#entryCount').value==='2';
- const p2=two?num($('#entryPrice2').value):0,v2=two?num($('#volume2').value):0;
- const v=v1+v2;return v?((p1*v1+p2*v2)/v):0
+ const count=Number($('#entryCount').value||1);
+ const entries=[1,2,3].filter(i=>i<=count).map(i=>({price:num($('#entryPrice'+i).value),volume:num($('#volume'+i).value)}));
+ const volume=entries.reduce((sum,e)=>sum+e.volume,0);
+ return volume?entries.reduce((sum,e)=>sum+e.price*e.volume,0)/volume:0
 }
 function maxForEntry(price,share){
  const inst=$('#instrument').value,sp=specs[inst],stop=num($('#initialStop').value),allowed=tradeAllowed()*share/100;
@@ -997,46 +1049,47 @@ function configureVolumeControl(index,maxVolume){
 }
 function calcRisk(){
  const inst=$('#instrument').value,sp=specs[inst],stop=num($('#initialStop').value),avg=avgEntry();
- const v1=num($('#volume1').value),v2=$('#entryCount').value==='2'?num($('#volume2').value):0,total=v1+v2;
- const p1=num($('#entryPrice1').value),p2=$('#entryCount').value==='2'?num($('#entryPrice2').value):0;
- const share1=num($('#riskShare1').value),share2=$('#entryCount').value==='2'?num($('#riskShare2').value):0;
- const max1=maxForEntry(p1,share1),max2=$('#entryCount').value==='2'?maxForEntry(p2,share2):0;
- const risk1=Math.abs(p1-stop)*sp.contract*v1,risk2=p2?Math.abs(p2-stop)*sp.contract*v2:0;
- const minRisk=Math.abs((p1-stop))*sp.contract*sp.step;
- const actual=risk1+risk2;
+ const count=Number($('#entryCount').value||1);
+ const entries=[1,2,3].filter(i=>i<=count).map(i=>({index:i,price:num($('#entryPrice'+i).value),volume:num($('#volume'+i).value),share:num($('#riskShare'+i).value)}));
+ const total=entries.reduce((sum,e)=>sum+e.volume,0);
+ const maxes=entries.map(e=>maxForEntry(e.price,e.share));
+ const actual=entries.reduce((sum,e)=>sum+Math.abs(e.price-stop)*sp.contract*e.volume,0);
+ const minRisk=entries.length?Math.abs(entries[0].price-stop)*sp.contract*sp.step:0;
  const allowed=tradeAllowed();
- const maxVol=max1+max2;
- const shares=share1+share2;
+ const maxVol=maxes.reduce((sum,v)=>sum+v,0);
+ const shares=entries.reduce((sum,e)=>sum+e.share,0);
  $('#rAllowed').textContent=money(allowed);$('#rMin').textContent=money(minRisk);$('#rActual').textContent=money(actual);
  $('#rMaxVol').textContent=maxVol.toFixed(2);$('#rAvg').textContent=avg?avg.toFixed(sp.digits):'—';$('#rShares').textContent=shares+'%';
- $('#volumeHint1 span').textContent=max1>0?`Максимум: ${max1.toFixed(2)} контр.`:'Максимум: —';
- $('#volumeHint2 span').textContent=max2>0?`Максимум: ${max2.toFixed(2)} контр.`:'Максимум: —';
- configureVolumeControl(1,max1);
- configureVolumeControl(2,max2);
+ [1,2,3].forEach(i=>{
+  const max=maxes[i-1]||0;
+  $('#volumeHint'+i+' span').textContent=max>0?`Максимум: ${max.toFixed(2)} контр.`:'Максимум: —';
+  configureVolumeControl(i,max);
+ });
+ const prices=entries.map(e=>e.price).filter(Boolean);
+ const volumeOverMax=entries.some((e,i)=>e.volume>maxes[i]+.0001);
  const has=avg&&stop;let cls='warn',msg='Введите цену входа и стоп.';
  if(avg&&stop&&shares!==100){cls='bad';msg='Сумма долей риска должна быть 100%.'}
- else if(avg&&stop&&v1>max1+.0001){cls='bad';msg=`Вход 1 превышает разрешённый объём ${max1.toFixed(2)}.`}
- else if(avg&&stop&&$('#entryCount').value==='2'&&v2>max2+.0001){cls='bad';msg=`Вход 2 превышает разрешённый объём ${max2.toFixed(2)}.`}
+ else if(avg&&stop&&volumeOverMax){const index=entries.findIndex((e,i)=>e.volume>maxes[i]+.0001);cls='bad';msg=`Вход ${index+1} превышает разрешённый объём ${maxes[index].toFixed(2)}.`}
  else if(has && total<sp.step){cls='bad';msg='Объём меньше минимального 0.01.'}
  else if(has && minRisk>allowed){cls='bad';msg='Даже минимальный объём 0.01 превышает доступный риск.'}
  else if(has && actual>allowed+.001){cls='bad';msg='Риск введённого объёма превышает допустимый. Сохранение заблокировано.'}
- else if(avg&&stop&&!initialStopDirectionOk(avg,stop,[p1,...(p2?[p2]:[])])){cls='bad';msg=initialStopDirectionMessage(avg,stop,[p1,...(p2?[p2]:[])])}
+ else if(avg&&stop&&!initialStopDirectionOk(avg,stop,prices)){cls='bad';msg=initialStopDirectionMessage(avg,stop,prices)}
  else if(has){cls='good';msg='Риск проверен. Сделку можно открыть.'}
  $('#riskAlert').className='alert '+cls;$('#riskAlert').textContent=msg;
- return {ok:has&&initialStopDirectionOk(avg,stop,[p1,...(p2?[p2]:[])])&&shares===100&&total>=sp.step&&v1<=max1+.0001&&($('#entryCount').value!=='2'||v2<=max2+.0001)&&minRisk<=allowed+.001&&actual<=allowed+.001,actual,avg,total,maxVol,max1,max2}
+ return {ok:has&&initialStopDirectionOk(avg,stop,prices)&&shares===100&&total>=sp.step&&!volumeOverMax&&minRisk<=allowed+.001&&actual<=allowed+.001,actual,avg,total,maxVol,max1:maxes[0]||0,max2:maxes[1]||0,max3:maxes[2]||0}
 }
-['initialStop','entryPrice1','entryPrice2','riskShare1','riskShare2'].forEach(id=>$('#'+id).addEventListener('input',()=>{
+['initialStop','entryPrice1','entryPrice2','entryPrice3','riskShare1','riskShare2','riskShare3'].forEach(id=>$('#'+id).addEventListener('input',()=>{
  calcRisk();
  saveInstrumentDraft(activeInstrument)
 }));
-['initialStop','entryPrice1','entryPrice2'].forEach(id=>{
+['initialStop','entryPrice1','entryPrice2','entryPrice3'].forEach(id=>{
  $('#'+id).addEventListener('blur',()=>{
   formatCurrentPriceInput($('#'+id));
   saveInstrumentDraft(activeInstrument);
   calcRisk()
  })
 });
-['1','2'].forEach(index=>{
+['1','2','3'].forEach(index=>{
  const input=$('#volume'+index),range=$('#volumeRange'+index);
  const currentStep=()=>Number((specs[$('#instrument').value]&&specs[$('#instrument').value].step)||.01);
  const currentMax=()=>Number(range.max)||currentStep();
@@ -1070,7 +1123,7 @@ $('#instrument').onchange=()=>{
  loadInstrumentDraft(activeInstrument);
  calcRisk()
 };
-['tfSetup','tfEntry','gridLevel','entryLevel1','entryLevel2','riskShare1','riskShare2','entryComment','isReentry','prevTradeId'].forEach(id=>{
+['tfSetup','tfEntry','gridLevel','entryLevel1','entryLevel2','entryLevel3','riskShare1','riskShare2','riskShare3','entryComment','isReentry','prevTradeId'].forEach(id=>{
  const el=$('#'+id);
  if(!el)return;
  const event=el.tagName==='TEXTAREA'||el.tagName==='INPUT'?'input':'change';
@@ -1078,16 +1131,15 @@ $('#instrument').onchange=()=>{
 });
 
 function resetForm(){
- $('#entryPrice1').value='';$('#entryPrice2').value='';$('#initialStop').value='';
- $('#volume1').value='0.01';$('#volume2').value='0.01';
- $('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';
- $('#volume1').value='0.01';$('#volume2').value='0.01';$('#entryCount').value='1';toggleEntry2();
+ $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';
+ $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
+ $('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';$('#volumeRange3').value='0.01';
+ $('#entryCount').value='1';toggleEntry2();
  form.targets=[];form.ot=[];form.conf=[];$('#entryComment').value='';renderStaticChips();updateInstrumentPriceUI();calcRisk()
 }
 function currentEntryPrices(){
- const prices=[num($('#entryPrice1').value)];
- if($('#entryCount').value==='2')prices.push(num($('#entryPrice2').value));
- return prices.filter(x=>x>0)
+ const count=Number($('#entryCount').value||1);
+ return [1,2,3].filter(index=>index<=count).map(index=>num($('#entryPrice'+index).value)).filter(x=>x>0)
 }
 function initialStopDirectionOk(avg,stop,prices=currentEntryPrices()){
  if(!avg||!stop||!prices.length)return true;
@@ -1154,7 +1206,18 @@ $('#saveTrade').onclick=()=>{
   violations:[],isReentry:$('#isReentry').value,previousTradeId:$('#prevTradeId').value,
   impulseReached23:'',impulseReachedMinus15:'',impulseReachedComment:''
  };
- if($('#entryCount').value==='2')t.entries.push({level:$('#entryLevel2').value,execution:$('#entryLevel2').value,price:num($('#entryPrice2').value),riskShare:num($('#riskShare2').value),volume:num($('#volume2').value),maxAllowedVolume:r.max2,executed:'pending'});
+ const count=Number($('#entryCount').value||1);
+ for(let index=2;index<=count;index++){
+  t.entries.push({
+   level:$('#entryLevel'+index).value,
+   execution:$('#entryLevel'+index).value,
+   price:num($('#entryPrice'+index).value),
+   riskShare:num($('#riskShare'+index).value),
+   volume:num($('#volume'+index).value),
+   maxAllowedVolume:r['max'+index],
+   executed:'pending'
+  });
+ }
  t.priceDigits=instrumentSpec(t.instrument).digits;
  state.trades.push(t);
  if(state.instrumentDrafts)delete state.instrumentDrafts[t.instrument];
@@ -1177,7 +1240,8 @@ function availableTargetsForTrade(t){
   if(strategy==='ВвД')add('Доп. цель ВвД',['Граница Д']);
   if(impulse)add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
  }else if(strategy==='Диапазон'){
-  if(k3)add('Цели К-3',['1.6','2.4','2.6']);
+  if(methods.includes('По сетке'))add('Цели диапазона',['Граница Д','1.6 Д','2.0 Д']);
+  else if(k3)add('Цели К-3',['1.6','2.4','2.6']);
   else if(impulse)add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
   else add('Цели диапазона',['Граница Д','1.6','2.0']);
  }else if(strategy==='К-3'){
@@ -1476,7 +1540,18 @@ function showClose(id){
    $('#mExitPrice').value=Number(t.avgPrice).toFixed(d);
    $('#mExitPriceSource').textContent=`Подставлена точная цена БУ по средней: ${Number(t.avgPrice).toFixed(d)}.`;
   }else{
-   $('#mExitPriceSource').textContent='Для цели введи фактическую цену фиксации или выбери быструю цену.';
+   const plan=plans[Number(sel)];
+   if(t.mode==='Backtest'&&isRangeGridTrade(t)&&plan){
+    const suggested=rangeGridSuggestedExitVolume(t,plan.label);
+    if(suggested>0){
+     setExitVolume(suggested);
+     $('#mExitPriceSource').textContent=`По сетке: на ${plan.label} предлагается ${suggested.toFixed(2)} контр. по распределению 60% / 20% / 20%. Введи фактическую цену фиксации.`;
+    }else{
+     $('#mExitPriceSource').textContent='На этой цели по фактическому объёму контрактов уже нет. Выбери следующую доступную фиксацию.';
+    }
+   }else{
+    $('#mExitPriceSource').textContent='Для цели введи фактическую цену фиксации или выбери быструю цену.';
+   }
   }
   updateTakeDateVisibility();
   preview()
@@ -1507,10 +1582,15 @@ function showClose(id){
  $('#qAll').onclick=()=>setExitVolume(t.remainingVolume);
  setExitVolume(t.remainingVolume);
  $('#mSaveExit').onclick=()=>{
-  const p=num($('#mExitPrice').value),v=preview(),sel=$('#mTargetSelect').value;
+ const p=num($('#mExitPrice').value),v=preview(),sel=$('#mTargetSelect').value;
  if(!sel||!p||!v)return;
   let exitAt=nowIso(),exitAtSource='recorded_at';
   const isTake=!isNaN(Number(sel))&&sel!=='';
+  if(t.mode==='Backtest'&&isRangeGridTrade(t)&&isTake){
+   const plan=plans[Number(sel)],suggested=rangeGridSuggestedExitVolume(t,plan.label);
+   if(suggested<instrumentStep-.000001)return alert('На этой цели по фактическому объёму контрактов уже нет доступной фиксации.');
+   if(Math.abs(v-suggested)>instrumentStep/100)return alert(`Для ${plan.label} по фактическому объёму нужно зафиксировать ${suggested.toFixed(2)} контр.`);
+  }
   if(t.mode==='Backtest'&&isTake){
    const exitDate=$('#mExitDate')?$('#mExitDate').value.trim():'';
    const exitTime=$('#mExitTime')?$('#mExitTime').value.trim():'';
@@ -1746,6 +1826,22 @@ function allocateExitVolumes(total,exits,step){
   .sort((a,b)=>b.fraction-a.fraction||a.index-b.index)
   .forEach(item=>{if(remaining>0){units[item.index]++;remaining--}});
  return units.map(v=>Math.round(v*step*1000000)/1000000)
+}
+function isRangeGridTrade(t){
+ return !!(t&&t.strategy==='Диапазон'&&Array.isArray(t.methods)&&t.methods.includes('По сетке'))
+}
+function rangeGridAllocation(t){
+ const step=(specs[t.instrument]&&specs[t.instrument].step)||.01;
+ return allocateExitVolumes(Number(t.totalVolume||0),[{volume:60},{volume:20},{volume:20}],step)
+}
+function rangeGridSuggestedExitVolume(t,label){
+ const labels=['Граница Д','1.6 Д','2.0 Д'];
+ const index=labels.indexOf(label);
+ if(index<0)return 0;
+ const already=(t.exits||[])
+  .filter(exit=>exit.label===label)
+  .reduce((sum,exit)=>sum+Number(exit.volume||0),0);
+ return Math.max(0,Number(rangeGridAllocation(t)[index]||0)-already)
 }
 function isWolfAutoExit(exit){return exit&&exit.group==='Цели Вульфа'&&['Т4','Т6'].includes(exit.label)}
 function allocateWolfExitVolumes(total,exits,step){
@@ -1984,7 +2080,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='48';
+const APP_VERSION='49';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2185,7 +2281,7 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
  }));
  const entries=[];const exits=[];const stops=[];const tradeOt=[];const tradeConf=[];
  (state.trades||[]).forEach(t=>{
@@ -2200,7 +2296,7 @@ function exportAnalysisFiles(){
  const stamp=fileStamp();
  const exportPayload={
   format:'TradingOSAnalysisExport',
-  exportVersion:6,
+  exportVersion:7,
   appVersion:APP_VERSION,
   schemaVersion:APP_SCHEMA_VERSION,
   storageKey:STORAGE_KEY,
@@ -2306,8 +2402,8 @@ $('#resetAll').onclick=()=>{if(confirm('Удалить все локальные
 
 applyBacktestDateTimeMasks();
 setTheme(state.theme||'light');
-$('#volume1').value='0.01';$('#volume2').value='0.01';
-$('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';
+$('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
+$('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';$('#volumeRange3').value='0.01';
 syncMethodString();renderStaticChips();renderStrategy();loadInstrumentDraft(activeInstrument);updateInstrumentPriceUI();updateHeader();updateStorageStatus();calcRisk();
 </script>
 </body>
