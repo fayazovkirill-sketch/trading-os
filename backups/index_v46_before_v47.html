@@ -274,11 +274,10 @@ input,select,textarea,button{min-height:44px}
       <select id="strategy">
         <option value="В.5">Вульф — В.5</option><option value="В+И">Вульф — В+И</option><option value="ВС">Вульф — ВС</option>
         <option value="ВвД">Вульф в диапазоне — ВвД</option><option value="Диапазон">Диапазон</option><option value="К-3">К-3</option>
-        <option value="Импульс">Импульс</option><option value="По сетке">По сетке</option><option value="Стата">Стата</option><option value="Слабый">Слабый</option>
+        <option value="Импульс">Импульс</option><option value="Стата">Стата</option><option value="Слабый">Слабый</option>
       </select>
     </div>
     <div id="subtypeWrap" class="field hidden"><label>Подтип / сценарий</label><select id="subtype"></select></div>
-    <div id="gridLevelWrap" class="field hidden"><label>Уровень присоединения</label><select id="gridLevel"><option value="1.6">1.6</option><option value="2.6">2.6</option><option value="3.6">3.6</option></select></div>
     <div class="field"><label>Способ входа</label><div class="chips" id="entryMethods"></div></div>
     <div class="field hidden" id="reentryWrap"><label>Перезаход</label><div class="row"><select id="isReentry"><option value="Нет">Нет</option><option value="Да">Да</option></select><input id="prevTradeId" placeholder="ID предыдущей"></div></div>
   </div>
@@ -506,7 +505,7 @@ function formatAppDateTime(value){
  const tz=appTimeZone();if(tz)options.timeZone=tz;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=33;
+const APP_SCHEMA_VERSION=32;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -588,7 +587,6 @@ function saveInstrumentDraft(instrument){
   direction:form.direction,
   strategy:$('#strategy').value,
   subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,
-  gridLevel:$('#gridLevel').value,
   methods:[...form.methods],
   tfSetup:$('#tfSetup').value,
   tfEntry:$('#tfEntry').value,
@@ -639,7 +637,6 @@ function loadInstrumentDraft(instrument){
   $('#subtype').value=d.subtype;
   renderStrategy();
  }
- if(d.gridLevel&&['1.6','2.6','3.6'].includes(d.gridLevel))$('#gridLevel').value=d.gridLevel;
  form.methods=(Array.isArray(d.methods)?d.methods:form.methods).filter(x=>(rules[$('#strategy').value].methods||[]).includes(x)||($('#strategy').value==='Слабый'&&$('#subtype').value==='от Т5'&&x==='К-3'));
  if(!form.methods.length)form.methods=[rules[$('#strategy').value].methods[0]];
  renderStrategy();
@@ -674,7 +671,6 @@ const rules={
  'Диапазон':{subtypes:['Накопление','Распределение'],methods:['Обычный','И','К-3'],groups:{normal:['Граница Д','1.6','2.0'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23'],k3:['1.6','2.4','2.6']}},
  'К-3':{methods:['К-3'],groups:{k3:['1.6','2.4','2.6']}},
  'Импульс':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
- 'По сетке':{subtypes:['И','ВТ5','В+И'],methods:['И','СЕРЧ','Лимитка'],groups:{grid:['2.6','3.6','4.23']}},
  'Стата':{subtypes:['1.6-50-2.6','1.2-50-2.6','1.6-100-2.6'],methods:['И','К-3'],groups:{stata:['2.6']}},
  'Слабый':{subtypes:['от Т4','от Т5'],methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}}
 };
@@ -863,14 +859,12 @@ function renderEntrySelectors(){
   setSelectOptions(e2,['Ручной'],'Ручной');
  }
 }
-function allowsCombinedQuickEntry(strategy,subtype){
- return ['В.5','ВвД'].includes(strategy)||(strategy==='По сетке'&&subtype==='ВТ5');
-}
 function toggleMethod(method,available){
+ const multiStrategies=['В.5','ВвД'];
  const s=$('#strategy').value;
  if(method==='И'){
   form.methods=['И'];
- }else if(allowsCombinedQuickEntry(s,$('#subtype').value)){
+ }else if(multiStrategies.includes(s)){
   form.methods=form.methods.filter(x=>x!=='И');
   if(form.methods.includes(method)){
    if(form.methods.length>1)form.methods=form.methods.filter(x=>x!==method);
@@ -889,24 +883,21 @@ function toggleMethod(method,available){
 function renderStrategy(){
  const s=$('#strategy').value,r=rules[s];
  const sw=$('#subtypeWrap'),sel=$('#subtype');
- const gw=$('#gridLevelWrap');
  if(r.subtypes){
   sw.classList.remove('hidden');
   const old=sel.value;
   sel.replaceChildren(...r.subtypes.map(v=>new Option(v,v)));
   if(r.subtypes.includes(old))sel.value=old;
  }else sw.classList.add('hidden');
- gw.classList.toggle('hidden',s!=='По сетке');
 
  let methods=[...r.methods];
  if(s==='Слабый' && sel.value==='от Т5')methods=['И','К-3'];
- if(s==='По сетке')methods=sel.value==='ВТ5'?['СЕРЧ','Лимитка']:['И'];
 
  // Keep only valid methods for the selected strategy.
  form.methods=form.methods.filter(x=>methods.includes(x));
  if(!form.methods.length)form.methods=[methods[0]];
 
- // For V.5, VvD, and Grid/VT5: SERCH and Limitka may be selected separately or together.
+ // For V.5 and VvD: SERCH and Limitka may be selected separately or together.
  // Impulse is exclusive.
  if(form.methods.includes('И'))form.methods=['И'];
 
@@ -1070,7 +1061,7 @@ $('#instrument').onchange=()=>{
  loadInstrumentDraft(activeInstrument);
  calcRisk()
 };
-['tfSetup','tfEntry','gridLevel','entryLevel1','entryLevel2','riskShare1','riskShare2','entryComment','isReentry','prevTradeId'].forEach(id=>{
+['tfSetup','tfEntry','entryLevel1','entryLevel2','riskShare1','riskShare2','entryComment','isReentry','prevTradeId'].forEach(id=>{
  const el=$('#'+id);
  if(!el)return;
  const event=el.tagName==='TEXTAREA'||el.tagName==='INPUT'?'input':'change';
@@ -1143,12 +1134,12 @@ $('#saveTrade').onclick=()=>{
  const t={
   id:uid(),app_version:APP_VERSION,status:'open',mode:form.mode,date:form.mode==='Real'?nowIso():$('#tradeDate').value+' '+$('#tradeTime').value,
   createdAt:nowIso(),updatedAt:nowIso(),instrument:$('#instrument').value,direction:form.direction,tfSetup:$('#tfSetup').value,tfEntry:$('#tfEntry').value,
-  strategy:$('#strategy').value,subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:'',method:form.method,methods:[...form.methods],
+  strategy:$('#strategy').value,subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,method:form.method,methods:[...form.methods],
   initialStop:num($('#initialStop').value),currentStop:num($('#initialStop').value),
   entries:[
    {level:$('#entryLevel1').value,execution:$('#entryLevel1').value,price:num($('#entryPrice1').value),riskShare:num($('#riskShare1').value),volume:num($('#volume1').value),maxAllowedVolume:r.max1,executed:true}
   ],
-  targets:[],availableTargets:availableTargetsForTrade({strategy:$('#strategy').value,method:form.method,methods:[...form.methods],subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:''}),
+  targets:[],availableTargets:availableTargetsForTrade({strategy:$('#strategy').value,method:form.method,methods:[...form.methods],subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value}),
   ot:[...form.ot],confirmations:[...form.conf],comment:$('#entryComment').value,
   initialRisk:r.actual,currentRisk:r.actual,avgPrice:r.avg,totalVolume:r.total,remainingVolume:r.total,exits:[],stops:[],
   violations:[],isReentry:$('#isReentry').value,previousTradeId:$('#prevTradeId').value,
@@ -1182,9 +1173,6 @@ function availableTargetsForTrade(t){
   else add('Цели диапазона',['Граница Д','1.6','2.0']);
  }else if(strategy==='К-3'){
   add('Цели К-3',['1.6','2.4','2.6']);
- }else if(strategy==='По сетке'){
-  const target=gridTargetForLevel(t.gridLevel);
-  if(target)add('Цели сетки',[target]);
  }else if(strategy==='Импульс'){
   add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
  }else if(strategy==='Стата'){
@@ -1194,14 +1182,6 @@ function availableTargetsForTrade(t){
   else add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
  }
  return out;
-}
-function gridTargetForLevel(level){
- return {'1.6':'2.6','2.6':'3.6','3.6':'4.23'}[String(level||'')]||'';
-}
-function gridStrategyLabel(t){
- if(t.strategy!=='По сетке'||!t.gridLevel)return '';
- const target=gridTargetForLevel(t.gridLevel);
- return ` · от ${t.gridLevel}${target?` → ${target}`:''}`;
 }
 function targetListText(t){
  const list=(t.availableTargets&&t.availableTargets.length?t.availableTargets:availableTargetsForTrade(t));
@@ -1245,7 +1225,7 @@ function riskStatusLabel(t){
 }
 function tradeCard(t,kind='open'){
  const c=document.createElement('div');c.className='card trade';
- c.innerHTML=`<div class="trade-head"><div><div class="trade-title">${t.instrument} · ${t.direction}</div><div class="mini-note">${t.strategy}${t.subtype?' / '+t.subtype:''}${gridStrategyLabel(t)} · ${t.method} · ${t.id}</div></div><span class="badge">${t.mode}</span></div>
+ c.innerHTML=`<div class="trade-head"><div><div class="trade-title">${t.instrument} · ${t.direction}</div><div class="mini-note">${t.strategy}${t.subtype?' / '+t.subtype:''} · ${t.method} · ${t.id}</div></div><span class="badge">${t.mode}</span></div>
  <div class="mini-note" style="margin-top:8px"><b>Дата сделки:</b> ${formatTradeDate(t)}</div>
  <div class="mini-note" style="margin-top:6px"><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}</div>
  <div class="mini-note" style="margin-top:3px"><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}</div>
@@ -1894,7 +1874,7 @@ function showDetails(id){
  const t=getTrade(id),d=specs[t.instrument].digits;
  const exits=(t.exits||[]).map(e=>`<div class="exit-row"><div><b>${e.group?e.group+': ':''}${e.label||e.reason}</b><br>Цена: ${Number(e.price).toFixed(d)} × ${Number(e.volume).toFixed(2)} контр. · ${Number(e.percentInitial||0).toFixed(1)}% начальной позиции${e.excludedVolume>0?`<br><span class="mini-note">Не учтено после коррекции: ${Number(e.excludedVolume).toFixed(2)} контр.</span>`:''}${e.calculationStatus==='excluded_no_position'?'<br><span class="mini-note">Фиксация не вошла в прибыль: фактической позиции уже не было.</span>':''}${e.stopPriceAtExit!=null?`<br>Стоп на момент выхода: ${Number(e.stopPriceAtExit).toFixed(d)}`:''}${e.remainingAfter!=null?`<br>Остаток после выхода: ${Number(e.remainingAfter).toFixed(2)}`:''}<br><span class="mini-note">${e.at?formatEventDateTime(e.at):''}</span></div><b>${money(e.pnl)}</b></div>`).join('')||'<div class="mini-note">Фактических выходов пока нет.</div>';
  const stops=(t.stops||[]).map((s,i)=>`<div class="exit-row"><div><b>${s.sourceLabel|| (s.source?`Стоп на вход ${s.source}`:'Перенос стопа')}</b><br>${s.oldStop!=null?`Старый стоп: ${Number(s.oldStop).toFixed(d)}<br>`:''}Новый стоп: ${Number(s.price).toFixed(d)}<br>${s.riskAfter<0?`Зафиксировано стопом: +${money(Math.abs(s.riskAfter))}`:`Риск после переноса: ${money(s.riskAfter||0)}`}<br><span class="mini-note">${s.at?formatEventDateTime(s.at):''}</span></div><b>${i+1}</b></div>`).join('')||'<div class="mini-note">Переносов стопа пока нет.</div>';
- modal(t.id,`<div class="arch"><p><strong>${t.instrument} ${t.direction}</strong> · ${t.strategy} ${t.subtype||''}${gridStrategyLabel(t)}</p>
+ modal(t.id,`<div class="arch"><p><strong>${t.instrument} ${t.direction}</strong> · ${t.strategy} ${t.subtype||''}</p>
  <p><b>Дата сделки:</b> ${formatTradeDate(t)}<br><b>Дата закрытия:</b> ${t.closedAt?formatEventDateTime(t.closedAt):'—'}</p>
  <p><b>Входы:</b><br>${t.entries.map((e,i)=>`Вход ${i+1}: ${Number(e.price).toFixed(d)} × ${Number(e.volume).toFixed(2)} контр. · ${e.execution||e.level}<br><span class="mini-note">${entryExecutionLabel(e)}</span>`).join('<br>')}</p>
  <p><b>Средняя цена:</b> ${Number(t.avgPrice).toFixed(d)} · <b>Начальный объём:</b> ${Number(t.totalVolume).toFixed(2)} · <b>Остаток:</b> ${Number(t.remainingVolume).toFixed(2)}</p>
@@ -1920,7 +1900,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='47';
+const APP_VERSION='46';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2110,8 +2090,6 @@ function tradeContextFields(t){
   direction:t.direction,
   strategy:t.strategy,
   subtype:t.subtype||'',
-  grid_entry_level:t.gridLevel||'',
-  grid_target:gridTargetForLevel(t.gridLevel)||'',
   trade_date_key:meta.trade_date_key,
   trade_hour:meta.trade_hour,
   weekday:meta.weekday,
@@ -2121,7 +2099,7 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
  }));
  const entries=[];const exits=[];const stops=[];const tradeOt=[];const tradeConf=[];
  (state.trades||[]).forEach(t=>{
