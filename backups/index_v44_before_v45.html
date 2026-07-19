@@ -228,7 +228,7 @@ input,select,textarea,button{min-height:44px}
 <div class="app" id="app">
 <header>
   <div class="brandrow">
-    <div class="brand">Trading OS <small>мобильный журнал сделок · v45</small></div>
+    <div class="brand">Trading OS <small>мобильный журнал сделок · v44</small></div>
     <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
   </div>
   <div class="kpis">
@@ -1680,13 +1680,6 @@ function allocateWolfExitVolumes(total,exits,step){
  });
  return result
 }
-function isImpulseStrategy(t){return t&&t.strategy==='Импульс'&&Array.isArray(t.methods)&&t.methods.includes('И')}
-function allocateImpulseExitVolumes(total,exits,step){
- const count=(exits||[]).length;
- if(!count||count>3)return null;
- const weights=count===1?[100]:count===2?[60,40]:[50,25,25];
- return allocateExitVolumes(total,weights.map(volume=>({volume})),step)
-}
 function recalculateImpulseExecution(t){
  const sp=specs[t.instrument],step=sp.step,entries=executedEntries(t);
  if(!entries.length)return {ok:false,message:'Нельзя исключить все входы. Удали сделку, если по факту входа не было.'};
@@ -1697,11 +1690,10 @@ function recalculateImpulseExecution(t){
  t.avgPrice=avg;
  t.initialRisk=initialRisk;
  const wolfAllocated=allocateWolfExitVolumes(t.totalVolume,t.exits||[],step);
- const impulseAllocated=isImpulseStrategy(t)?allocateImpulseExitVolumes(t.totalVolume,t.exits||[],step):null;
  let remaining=t.totalVolume;
  (t.exits||[]).forEach((exit,index)=>{
   const requested=Math.max(0,Number(exit.requestedVolume!=null?exit.requestedVolume:exit.volume||0));
-  const desired=impulseAllocated?impulseAllocated[index]:(isWolfAutoExit(exit)?wolfAllocated[index]:requested);
+  const desired=isWolfAutoExit(exit)?wolfAllocated[index]:requested;
   const volume=Math.min(remaining,desired||0);
   exit.requestedVolume=requested;
   exit.volume=volume;
@@ -1900,7 +1892,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='45';
+const APP_VERSION='44';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
