@@ -536,7 +536,7 @@ function formatAppDateTime(value,timeZone=appTimeZone()){
  if(timeZone)options.timeZone=timeZone;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=37;
+const APP_SCHEMA_VERSION=38;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -696,9 +696,9 @@ function loadInstrumentDraft(instrument){
  $('#entryPrice2').value=d.entryPrice2||'';
  $('#entryPrice3').value=d.entryPrice3||'';
  $('#initialStop').value=d.initialStop||'';
- $('#riskShare1').value=d.riskShare1||(isRangeGridEntry()?'34':'100');
- $('#riskShare2').value=d.riskShare2||(isRangeGridEntry()?'33':'50');
- $('#riskShare3').value=d.riskShare3||'33';
+ $('#riskShare1').value=d.riskShare1||(isRangeGridEntry()?'30':'100');
+ $('#riskShare2').value=d.riskShare2||(isRangeGridEntry()?'30':'50');
+ $('#riskShare3').value=d.riskShare3||(isRangeGridEntry()?'40':'33');
  $('#volume1').value=d.volume1||'0.01';
  $('#volume2').value=d.volume2||'0.01';
  $('#volume3').value=d.volume3||'0.01';
@@ -971,7 +971,7 @@ function renderStrategy(){
 
  const entryCount=$('#entryCount');
  const rangeGrid=isRangeGridEntry();
- const twoAllowed=$('#strategy').value!=='Стата'&&(isImpulseEntry()||isQuickDoubleEntry());
+ const twoAllowed=isImpulseEntry()||isQuickDoubleEntry();
  entryCount.querySelector('option[value="3"]').hidden=!rangeGrid;
  entryCount.querySelector('option[value="3"]').disabled=!rangeGrid;
  entryCount.disabled=rangeGrid||(!twoAllowed&&!rangeGrid);
@@ -983,7 +983,7 @@ function renderStrategy(){
  if(isRangeGridEntry()){
   hint.innerHTML='<b>Вход по сетке:</b> уровни 38 / 14 / -15. Стоп всегда за уровнем -38; точную цену стопа введи вручную.';
  }else if(isImpulseEntry()){
-  hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.';
+  hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.<br>При двух входах риск распределяется автоматически: 60% на ближний к стопу вход и 40% на дальний.';
  }else{
   hint.textContent='Средняя цена считается взвешенно по объёмам. Для двух входов сумма долей риска должна быть 100%.';
  }
@@ -1016,9 +1016,9 @@ function toggleEntry2(resetShares=true){
  $('#entry2').classList.toggle('hidden',!two);
  $('#entry3').classList.toggle('hidden',!three);
  if(resetShares){
-  $('#riskShare1').value=three?34:two?50:100;
-  $('#riskShare2').value=three?33:50;
-  $('#riskShare3').value=33;
+  $('#riskShare1').value=three?(isRangeGridEntry()?30:34):two?(isImpulseEntry()?60:50):100;
+  $('#riskShare2').value=three?(isRangeGridEntry()?30:33):(isImpulseEntry()?40:50);
+  $('#riskShare3').value=three?(isRangeGridEntry()?40:33):33;
  }
  calcRisk()
 }
@@ -1029,6 +1029,33 @@ function avgEntry(){
  const entries=[1,2,3].filter(i=>i<=count).map(i=>({price:num($('#entryPrice'+i).value),volume:num($('#volume'+i).value)}));
  const volume=entries.reduce((sum,e)=>sum+e.volume,0);
  return volume?entries.reduce((sum,e)=>sum+e.price*e.volume,0)/volume:0
+}
+function syncAutomaticRiskShares(){
+ const count=Number($('#entryCount').value||1);
+ const inputs=[1,2,3].map(index=>$('#riskShare'+index));
+ inputs.forEach(input=>{input.readOnly=false});
+ if(isImpulseEntry()&&count===1){
+  inputs[0].value='100';
+  inputs[0].readOnly=true;
+  return;
+ }
+ if(isImpulseEntry()&&count===2){
+  const stop=num($('#initialStop').value);
+  const first=num($('#entryPrice1').value),second=num($('#entryPrice2').value);
+  const firstIsNear=!stop||!first||!second||Math.abs(first-stop)<=Math.abs(second-stop);
+  inputs[0].value=firstIsNear?'60':'40';
+  inputs[1].value=firstIsNear?'40':'60';
+  inputs[0].readOnly=true;
+  inputs[1].readOnly=true;
+  return;
+ }
+ if(!isRangeGridEntry()||count!==3)return;
+ const stop=num($('#initialStop').value);
+ const entries=[1,2,3].map(index=>({index,price:num($('#entryPrice'+index).value)}));
+ const hasPrices=stop&&entries.every(entry=>entry.price);
+ const ranked=hasPrices?entries.slice().sort((a,b)=>Math.abs(a.price-stop)-Math.abs(b.price-stop)||a.index-b.index):entries;
+ const shares=hasPrices?{[ranked[0].index]:40,[ranked[1].index]:30,[ranked[2].index]:30}:{1:30,2:30,3:40};
+ entries.forEach(entry=>{inputs[entry.index-1].value=String(shares[entry.index]);inputs[entry.index-1].readOnly=true});
 }
 function maxForEntry(price,share){
  const inst=$('#instrument').value,sp=specs[inst],stop=num($('#initialStop').value),allowed=tradeAllowed()*share/100;
@@ -1064,6 +1091,7 @@ function configureVolumeControl(index,maxVolume){
  else range.value=usableMax.toFixed(digits);
 }
 function calcRisk(){
+ syncAutomaticRiskShares();
  const inst=$('#instrument').value,sp=specs[inst],stop=num($('#initialStop').value),avg=avgEntry();
  const count=Number($('#entryCount').value||1);
  const entries=[1,2,3].filter(i=>i<=count).map(i=>({index:i,price:num($('#entryPrice'+i).value),volume:num($('#volume'+i).value),share:num($('#riskShare'+i).value)}));
@@ -1342,6 +1370,7 @@ function tradeCard(t,kind='open'){
  <div class="mini-note" style="margin-top:8px"><b>Дата сделки:</b> ${formatTradeDate(t)}</div>
  <div class="mini-note" style="margin-top:6px"><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}</div>
  <div class="mini-note" style="margin-top:3px"><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}</div>
+ ${t.status==='not_triggered'?'<div class="mini-note" style="margin-top:6px"><b>Вход не состоялся:</b> цена не дошла. PnL, R и статистика сделок не учитываются.</div>':''}
  ${pendingEntries(t).length?`<div class="mini-note" style="margin-top:3px"><b>Ожидают цены:</b> ${pendingEntries(t).length}</div>`:''}
  <div class="trade-grid">
  <div class="metric"><span>Средняя</span><b>${t.avgPrice?.toFixed(specs[t.instrument].digits)||'—'}</b></div>
@@ -1371,7 +1400,7 @@ function renderOpen(){
  const list=$('#openList'),ts=openTrades();$('#openCountLabel').textContent=ts.length+' сделок';list.replaceChildren(...(ts.length?ts.map(t=>tradeCard(t)):[Object.assign(document.createElement('div'),{className:'card empty',textContent:'Открытых сделок нет.'})]))
 }
 function renderDone(){
- const pending=state.trades.filter(t=>t.status==='pending'),hist=state.trades.filter(t=>t.status==='done').slice().reverse();
+ const pending=state.trades.filter(t=>t.status==='pending'),hist=state.trades.filter(t=>t.status==='done'||t.status==='not_triggered').slice().reverse();
  $('#pendingList').replaceChildren(...(pending.length?pending.map(t=>tradeCard(t,'pending')):[Object.assign(document.createElement('div'),{className:'card empty',textContent:'Нет сделок, ожидающих завершения.'})]));
  $('#historyList').replaceChildren(...(hist.length?hist.map(t=>tradeCard(t,'history')):[Object.assign(document.createElement('div'),{className:'card empty',textContent:'История пока пустая.'})]));
  $('#pendingList').classList.toggle('hidden',form.doneView!=='pending');$('#historyList').classList.toggle('hidden',form.doneView!=='history')
@@ -1865,10 +1894,13 @@ function isRangeImpulseTrade(t){
 function rangeEntryReviewLevels(t){
  if(!t)return [];
  const methods=Array.isArray(t.methods)?t.methods:String(t.method||'').split(' + ').filter(Boolean);
+ if(methods.includes('К-3')){
+  const entry=(t.entries||[]).find(e=>['23','38'].includes(String(e.level||'')));
+  return entry?[String(entry.level)]:[];
+ }
  if(t.strategy==='Диапазон'){
   if(methods.includes('По сетке'))return ['38','14','-15'];
   if(methods.includes('И'))return ['50','23','-15'];
-  if(methods.includes('К-3'))return ['23','38'];
  }
  if(methods.includes('И'))return ['50','23','-15'];
  return []
@@ -1919,7 +1951,34 @@ function allocateImpulseExitVolumes(total,exits,step){
 }
 function recalculateImpulseExecution(t){
  const sp=specs[t.instrument],step=sp.step,entries=executedEntries(t);
- if(!entries.length)return {ok:false,message:'Нельзя исключить все входы. Удали сделку, если по факту входа не было.'};
+ if(!entries.length){
+  (t.exits||[]).forEach(exit=>{
+   const requested=Math.max(0,Number(exit.requestedVolume!=null?exit.requestedVolume:exit.volume||0));
+   exit.requestedVolume=requested;
+   exit.volume=0;
+   exit.excludedVolume=requested;
+   exit.calculationStatus='excluded_no_position';
+   exit.pnl=0;
+   exit.percentInitial=0;
+   exit.remainingAfter=0;
+  });
+  t.totalVolume=0;
+  t.avgPrice=0;
+  t.initialRisk=0;
+  t.currentRisk=0;
+  t.remainingVolume=0;
+  t.pnl=0;
+  t.rResult=0;
+  t.status='not_triggered';
+  t.closedAt=t.closedAt||nowIso();
+  t.finalizedAt=nowIso();
+  t.priceReachedTargets=[];
+  t.priceReachedByGroup={};
+  t.maxTargets={};
+  t.maxTarget='—';
+  t.entryExecutionCorrection={at:nowIso(),actualEntryCount:0,actualVolume:0};
+  return {ok:true,remaining:0,notTriggered:true}
+ }
  const total=entries.reduce((sum,e)=>sum+Number(e.volume||0),0);
  const avg=entries.reduce((sum,e)=>sum+Number(e.price||0)*Number(e.volume||0),0)/total;
  const initialRisk=entries.reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.initialStop||0))*sp.contract*Number(e.volume||0),0);
@@ -1951,6 +2010,8 @@ function recalculateImpulseExecution(t){
  if(remaining>0){
   t.status='open';t.closedAt=null;t.finalizedAt=null;
   t.priceReachedTargets=[];t.priceReachedByGroup={};t.maxTargets={};t.maxTarget='—'
+ }else if(t.status==='not_triggered'){
+  t.status='done';
  }
  t.entryExecutionCorrection={at:nowIso(),actualEntryCount:entries.length,actualVolume:t.totalVolume};
  if(isImpulseStrategy(t))t.impulseExecutionCorrection=t.entryExecutionCorrection;
@@ -2065,7 +2126,7 @@ function showRangeEntryReview(id){
    const level=String(entry.level||'');
    return Object.prototype.hasOwnProperty.call(outcomes,level)?outcomes[level]==='executed':entryStatus(entry)==='executed'
   }).length;
-  if(!actualCount)return alert('Нельзя исключить все входы. Удали сделку, если по факту входа не было.');
+  const wasNotTriggered=t.status==='not_triggered';
   const hadAppliedBalance=!!t.balanceApplied;
   const previousAppliedPnl=Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0);
   for(const level of levels){
@@ -2086,12 +2147,14 @@ function showRangeEntryReview(id){
   const result=recalculateImpulseExecution(t);
   if(!result.ok)return alert(result.message);
   if(hadAppliedBalance){
-   if(result.remaining>0)reverseAppliedTradeBalance(t);
+   if(result.notTriggered||result.remaining>0)reverseAppliedTradeBalance(t);
    else updateAppliedTradeBalance(t,previousAppliedPnl);
+  }else if(wasNotTriggered&&!result.notTriggered&&result.remaining<=0){
+   updateAppliedTradeBalance(t,0);
   }
   touchTrade(t);
   save();$('#tradeModal').classList.remove('show');renderDone();renderOpen();updateHeader();
-  alert('Входы, объём, прибыль и R пересчитаны по фактическим исполнениям.')
+  alert(result.notTriggered?'Входа по факту не было. Сделка исключена из PnL, R, баланса и статистики сделок.':'Входы, объём, прибыль и R пересчитаны по фактическим исполнениям.')
  }
 }
 
@@ -2130,7 +2193,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='53';
+const APP_VERSION='54';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2322,6 +2385,7 @@ function tradeContextFields(t){
  const meta=tradeReportMeta(t);
  return {
   trade_id:t.id,
+  statistics_eligible:t.status==='done',
   time_zone:t.timezone||'local',
   instrument:t.instrument,
   direction:t.direction,
@@ -2338,7 +2402,7 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
  }));
  const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];
  (state.trades||[]).forEach(t=>{
