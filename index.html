@@ -405,7 +405,7 @@ input,select,textarea,button{min-height:44px}
       <div class="field"><label>Текущий баланс, USD</label><input id="setBalance" type="number" step="0.01"></div>
       <div class="field"><label>Риск на сделку, %</label><input id="setRisk" type="number" step="0.1" min="0" max="100"></div>
       <div class="field"><label>Дневной лимит, %</label><input id="setDayRisk" type="number" step="0.1" min="0" max="100"><div class="mini-note">Считается от баланса на начало текущего дня.</div></div>
-      <div class="field"><label>Часовой пояс</label><select id="setTimezone"><option value="local">Системный</option><option value="Europe/Riga">Europe/Riga</option><option value="Europe/Moscow">Europe/Moscow</option></select></div>
+      <div class="field"><label>Время сделок</label><select id="setTimezone" disabled><option value="Europe/Moscow">МСК (Europe/Moscow)</option></select></div>
     </div>
     <button class="primary" id="saveSettings">Сохранить настройки</button>
   </div>
@@ -498,7 +498,8 @@ const floorStep=(v,s=.01)=>Math.floor((v+1e-9)/s)*s;
 const nowIso=()=>new Date().toISOString();
 const uid=()=> 'TR-'+new Date().toISOString().slice(2,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
 
-const defaults={theme:'light',balance:1000,riskPct:1,dayRiskPct:3,timezone:'local',mode:'Real',dayStartBalance:1000,dayKey:'',balanceEvents:[],trades:[],instrumentDrafts:{},lastSavedAt:'',lastBackupAt:''};
+const MOSCOW_TIME_ZONE='Europe/Moscow';
+const defaults={theme:'light',balance:1000,riskPct:1,dayRiskPct:3,timezone:MOSCOW_TIME_ZONE,mode:'Real',dayStartBalance:1000,dayKey:'',balanceEvents:[],trades:[],instrumentDrafts:{},lastSavedAt:'',lastBackupAt:''};
 function cloneDefaults(){return JSON.parse(JSON.stringify(defaults))}
 function loadState(){
  const raw=localStorage.getItem('tradingOS_v3');
@@ -513,24 +514,29 @@ function loadState(){
 }
 let state=loadState();
 
-function appTimeZone(){return state.timezone&&state.timezone!=='local'?state.timezone:undefined}
-function appDateKey(value=new Date()){
+function timeZoneOrLocal(value){return value&&value!=='local'?value:undefined}
+function appTimeZone(){return MOSCOW_TIME_ZONE}
+function tradeTimeZone(t){
+ return t&&Object.prototype.hasOwnProperty.call(t,'timezone')?timeZoneOrLocal(t.timezone):appTimeZone()
+}
+function dateKeyInTimeZone(value,timeZone){
  const date=value instanceof Date?value:new Date(value);
  if(isNaN(date))return '';
  const options={year:'numeric',month:'2-digit',day:'2-digit'};
- const tz=appTimeZone();if(tz)options.timeZone=tz;
+ if(timeZone)options.timeZone=timeZone;
  const parts=new Intl.DateTimeFormat('en-GB',options).formatToParts(date);
  const get=type=>(parts.find(x=>x.type===type)||{}).value||'';
  return `${get('year')}-${get('month')}-${get('day')}`
 }
-function formatAppDateTime(value){
+function appDateKey(value=new Date()){return dateKeyInTimeZone(value,appTimeZone())}
+function formatAppDateTime(value,timeZone=appTimeZone()){
  const date=value instanceof Date?value:new Date(value);
  if(isNaN(date))return String(value||'—');
  const options={day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'};
- const tz=appTimeZone();if(tz)options.timeZone=tz;
+ if(timeZone)options.timeZone=timeZone;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=36;
+const APP_SCHEMA_VERSION=37;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -572,6 +578,15 @@ if((state.schemaVersion||0)<29){
   rebaseBalanceEvents();
   state.schemaVersion=29;
   localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+}
+if((state.schemaVersion||0)<37){
+ const legacyTimeZone=state.timezone||'local';
+ (state.trades||[]).forEach(t=>{
+  if(!Object.prototype.hasOwnProperty.call(t,'timezone'))t.timezone=legacyTimeZone;
+ });
+ state.timezone=MOSCOW_TIME_ZONE;
+ state.schemaVersion=37;
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state));
 }
 let form={mode:state.mode||'Real',direction:'Long',method:'СЕРЧ',methods:['СЕРЧ'],targets:[],ot:[],conf:[],doneView:'pending'};
 
@@ -741,7 +756,7 @@ function tradeRiskDateKey(t){
  if(t&&t.mode==='Backtest'){
   return parseBacktestDateKey(t.date)||''
  }
- return appDateKey((t&&t.createdAt)||(t&&t.closedAt)||new Date())
+ return dateKeyInTimeZone((t&&t.createdAt)||(t&&t.closedAt)||new Date(),tradeTimeZone(t))
 }
 function activeRiskDateKey(){
  if(form.mode==='Backtest'){
@@ -758,7 +773,7 @@ function realizedLossForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
   if(!sameRiskMode(t,mode))return sum;
   const tradeKey=tradeRiskDateKey(t);
   return sum+(t.exits||[]).filter(e=>{
-   const eventKey=t.mode==='Backtest'?tradeKey:(e.at?appDateKey(e.at):tradeKey);
+   const eventKey=t.mode==='Backtest'?tradeKey:(e.at?dateKeyInTimeZone(e.at,tradeTimeZone(t)):tradeKey);
    return eventKey===dayKey&&Number(e.pnl)<0
   }).reduce((s,e)=>s+Math.abs(Number(e.pnl)),0)
  },0)
@@ -768,7 +783,7 @@ function closedPositivePnlForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode(
  return state.trades
   .filter(t=>{
    if(!sameRiskMode(t,mode))return false;
-   const closeKey=t.mode==='Backtest'?tradeRiskDateKey(t):(t.closedAt?appDateKey(t.closedAt):'');
+   const closeKey=t.mode==='Backtest'?tradeRiskDateKey(t):(t.closedAt?dateKeyInTimeZone(t.closedAt,tradeTimeZone(t)):'');
    return closeKey===dayKey&&t.balanceApplied
   })
   .reduce((s,t)=>s+Math.max(0,Number(t.pnl||0)),0)
@@ -1207,7 +1222,7 @@ $('#saveTrade').onclick=()=>{
  const startStop=num($('#initialStop').value);
  if(!initialStopDirectionOk(r.avg,startStop,currentEntryPrices()))return alert(initialStopDirectionMessage(r.avg,startStop,currentEntryPrices()));
  const t={
-  id:uid(),app_version:APP_VERSION,status:'open',mode:form.mode,date:form.mode==='Real'?nowIso():$('#tradeDate').value+' '+$('#tradeTime').value,
+  id:uid(),app_version:APP_VERSION,status:'open',mode:form.mode,timezone:MOSCOW_TIME_ZONE,date:form.mode==='Real'?nowIso():$('#tradeDate').value+' '+$('#tradeTime').value,
   createdAt:nowIso(),updatedAt:nowIso(),instrument:$('#instrument').value,direction:form.direction,tfSetup:$('#tfSetup').value,tfEntry:$('#tfEntry').value,
   strategy:$('#strategy').value,subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:'',method:form.method,methods:[...form.methods],
   initialStop:num($('#initialStop').value),currentStop:num($('#initialStop').value),
@@ -1290,13 +1305,13 @@ function formatTradeDate(t){
  if(!raw)return '—';
  if(t.mode==='Backtest')return raw;
  const d=new Date(raw);
- return isNaN(d)?raw:formatAppDateTime(d);
+ return isNaN(d)?raw:formatAppDateTime(d,tradeTimeZone(t));
 }
-function formatEventDateTime(value){
+function formatEventDateTime(value,t){
  if(!value)return '';
  const raw=String(value);
  if(/^\d{2}\.\d{2}\.(\d{2}|\d{4})(\s+([01]\d|2[0-3]):[0-5]\d)?$/.test(raw))return raw;
- return formatAppDateTime(raw)
+ return formatAppDateTime(raw,tradeTimeZone(t))
 }
 function realizedPnl(t){
  return (t.exits||[]).reduce((s,e)=>s+Number(e.pnl||0),0);
@@ -2086,10 +2101,10 @@ function showDetails(id){
   const planned=entryStatus(e)==='not_executed';
   return `${planned?'План входа':'Вход'} ${i+1}: ${Number(e.price).toFixed(d)} × ${Number(e.volume).toFixed(2)} контр. · ${e.execution||e.level}<br><span class="mini-note">${entryExecutionLabel(e)}${planned?' · объём не учитывается в прибыли и R':''}</span>${t.status==='open'&&entryStatus(e)==='pending'?` <button type="button" class="secondary" data-execute-entry="${i}">Вход исполнен</button>`:''}`
  }).join('<br>');
- const exits=(t.exits||[]).map(e=>`<div class="exit-row"><div><b>${e.group?e.group+': ':''}${e.label||e.reason}</b><br>Цена: ${Number(e.price).toFixed(d)} × ${Number(e.volume).toFixed(2)} контр. · ${Number(e.percentInitial||0).toFixed(1)}% начальной позиции${e.excludedVolume>0?`<br><span class="mini-note">Не учтено после коррекции: ${Number(e.excludedVolume).toFixed(2)} контр.</span>`:''}${e.calculationStatus==='excluded_no_position'?'<br><span class="mini-note">Фиксация не вошла в прибыль: фактической позиции уже не было.</span>':''}${e.stopPriceAtExit!=null?`<br>Стоп на момент выхода: ${Number(e.stopPriceAtExit).toFixed(d)}`:''}${e.remainingAfter!=null?`<br>Остаток после выхода: ${Number(e.remainingAfter).toFixed(2)}`:''}<br><span class="mini-note">${e.at?formatEventDateTime(e.at):''}</span></div><b>${money(e.pnl)}</b></div>`).join('')||'<div class="mini-note">Фактических выходов пока нет.</div>';
- const stops=(t.stops||[]).map((s,i)=>`<div class="exit-row"><div><b>${s.sourceLabel|| (s.source?`Стоп на вход ${s.source}`:'Перенос стопа')}</b><br>${s.oldStop!=null?`Старый стоп: ${Number(s.oldStop).toFixed(d)}<br>`:''}Новый стоп: ${Number(s.price).toFixed(d)}<br>${s.riskAfter<0?`Зафиксировано стопом: +${money(Math.abs(s.riskAfter))}`:`Риск после переноса: ${money(s.riskAfter||0)}`}<br><span class="mini-note">${s.at?formatEventDateTime(s.at):''}</span></div><b>${i+1}</b></div>`).join('')||'<div class="mini-note">Переносов стопа пока нет.</div>';
+ const exits=(t.exits||[]).map(e=>`<div class="exit-row"><div><b>${e.group?e.group+': ':''}${e.label||e.reason}</b><br>Цена: ${Number(e.price).toFixed(d)} × ${Number(e.volume).toFixed(2)} контр. · ${Number(e.percentInitial||0).toFixed(1)}% начальной позиции${e.excludedVolume>0?`<br><span class="mini-note">Не учтено после коррекции: ${Number(e.excludedVolume).toFixed(2)} контр.</span>`:''}${e.calculationStatus==='excluded_no_position'?'<br><span class="mini-note">Фиксация не вошла в прибыль: фактической позиции уже не было.</span>':''}${e.stopPriceAtExit!=null?`<br>Стоп на момент выхода: ${Number(e.stopPriceAtExit).toFixed(d)}`:''}${e.remainingAfter!=null?`<br>Остаток после выхода: ${Number(e.remainingAfter).toFixed(2)}`:''}<br><span class="mini-note">${e.at?formatEventDateTime(e.at,t):''}</span></div><b>${money(e.pnl)}</b></div>`).join('')||'<div class="mini-note">Фактических выходов пока нет.</div>';
+ const stops=(t.stops||[]).map((s,i)=>`<div class="exit-row"><div><b>${s.sourceLabel|| (s.source?`Стоп на вход ${s.source}`:'Перенос стопа')}</b><br>${s.oldStop!=null?`Старый стоп: ${Number(s.oldStop).toFixed(d)}<br>`:''}Новый стоп: ${Number(s.price).toFixed(d)}<br>${s.riskAfter<0?`Зафиксировано стопом: +${money(Math.abs(s.riskAfter))}`:`Риск после переноса: ${money(s.riskAfter||0)}`}<br><span class="mini-note">${s.at?formatEventDateTime(s.at,t):''}</span></div><b>${i+1}</b></div>`).join('')||'<div class="mini-note">Переносов стопа пока нет.</div>';
  modal(t.id,`<div class="arch"><p><strong>${t.instrument} ${t.direction}</strong> · ${t.strategy} ${t.subtype||''}${gridStrategyLabel(t)}</p>
- <p><b>Дата сделки:</b> ${formatTradeDate(t)}<br><b>Дата закрытия:</b> ${t.closedAt?formatEventDateTime(t.closedAt):'—'}</p>
+ <p><b>Дата сделки:</b> ${formatTradeDate(t)}<br><b>Дата закрытия:</b> ${t.closedAt?formatEventDateTime(t.closedAt,t):'—'}</p>
  <p><b>Входы:</b><br>${entries}</p>
  <p><b>Средняя цена:</b> ${Number(t.avgPrice).toFixed(d)} · <b>Начальный объём:</b> ${Number(t.totalVolume).toFixed(2)} · <b>Остаток:</b> ${Number(t.remainingVolume).toFixed(2)}<br><b>Риск в резерве:</b> ${money(reservedRiskForTrade(t))}</p>
  <p><b>Первоначальный стоп:</b> ${Number(t.initialStop).toFixed(d)} · <b>Текущий стоп:</b> ${Number(t.currentStop).toFixed(d)}<br><b>${riskStatusLabel(t)}:</b> ${riskText(t.currentRisk)}</p>
@@ -2115,7 +2130,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='52';
+const APP_VERSION='53';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2175,6 +2190,11 @@ async function restoreFromFile(file){
  restored.trades=Array.isArray(restored.trades)?restored.trades:[];
  restored.balanceEvents=Array.isArray(restored.balanceEvents)?restored.balanceEvents:[];
  restored.instrumentDrafts=restored.instrumentDrafts&&typeof restored.instrumentDrafts==='object'?restored.instrumentDrafts:{};
+ const legacyTimeZone=restored.timezone||'local';
+ restored.trades.forEach(t=>{
+  if(!Object.prototype.hasOwnProperty.call(t,'timezone'))t.timezone=legacyTimeZone;
+ });
+ restored.timezone=MOSCOW_TIME_ZONE;
  restored.schemaVersion=APP_SCHEMA_VERSION;
  restored.lastSavedAt=nowIso();
  localStorage.setItem(STORAGE_KEY,JSON.stringify(restored));
@@ -2255,7 +2275,7 @@ function tradeDateParts(t){
  const d=new Date(raw);
  if(isNaN(d))return {dateKey:'',hour:'',minute:''};
  const options={year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'};
- const tz=appTimeZone();if(tz)options.timeZone=tz;
+ const tz=tradeTimeZone(t);if(tz)options.timeZone=tz;
  const parts=new Intl.DateTimeFormat('en-GB',options).formatToParts(d);
  const get=type=>(parts.find(x=>x.type===type)||{}).value||'';
  return {dateKey:`${get('year')}-${get('month')}-${get('day')}`,hour:Number(get('hour')),minute:Number(get('minute'))}
@@ -2270,7 +2290,7 @@ function tradeReportMeta(t){
   market_group:marketGroupForInstrument(t.instrument)
  }
 }
-function eventDateParts(value){
+function eventDateParts(value,t){
  const raw=String(value||'');
  const m=raw.match(/^(\d{2})\.(\d{2})\.(\d{2}|\d{4})(?:\s+([01]\d|2[0-3]):([0-5]\d))?/);
  if(m){
@@ -2280,7 +2300,7 @@ function eventDateParts(value){
  const d=new Date(raw);
  if(isNaN(d))return {dateKey:'',hour:'',minute:''};
  const options={year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'};
- const tz=appTimeZone();if(tz)options.timeZone=tz;
+ const tz=tradeTimeZone(t);if(tz)options.timeZone=tz;
  const parts=new Intl.DateTimeFormat('en-GB',options).formatToParts(d);
  const get=type=>(parts.find(x=>x.type===type)||{}).value||'';
  return {dateKey:`${get('year')}-${get('month')}-${get('day')}`,hour:Number(get('hour')),minute:Number(get('minute'))}
@@ -2289,7 +2309,7 @@ function exitReportMeta(e,t){
  const source=(e&&e.atSource)||'';
  if(!e||e.reason!=='Тейк')return {exit_date_key:'',exit_hour:'',exit_weekday:'',exit_session:'',exit_at_source:source};
  if(t&&t.mode==='Backtest'&&source!=='manual_backtest_take')return {exit_date_key:'',exit_hour:'',exit_weekday:'',exit_session:'',exit_at_source:source};
- const parts=eventDateParts(e&&e.at);
+ const parts=eventDateParts(e&&e.at,t);
  return {
   exit_date_key:parts.dateKey,
   exit_hour:parts.hour,
@@ -2302,6 +2322,7 @@ function tradeContextFields(t){
  const meta=tradeReportMeta(t);
  return {
   trade_id:t.id,
+  time_zone:t.timezone||'local',
   instrument:t.instrument,
   direction:t.direction,
   strategy:t.strategy,
@@ -2317,7 +2338,7 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
  }));
  const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];
  (state.trades||[]).forEach(t=>{
@@ -2426,7 +2447,7 @@ $('#analysisExportBtn').onclick=exportAnalysisFiles;
 if($('#balanceOpAmount'))$('#balanceOpAmount').addEventListener('blur',()=>cleanMoneyField($('#balanceOpAmount')));
 
 $('#addDemo').onclick=()=>{
- const t={id:uid(),app_version:APP_VERSION,status:'open',mode:'Real',createdAt:nowIso(),instrument:'SILVER',direction:'Long',tfSetup:'M15',tfEntry:'M5',strategy:'В.5',subtype:'',method:'И',methods:['И'],
+ const t={id:uid(),app_version:APP_VERSION,status:'open',mode:'Real',timezone:MOSCOW_TIME_ZONE,createdAt:nowIso(),instrument:'SILVER',direction:'Long',tfSetup:'M15',tfEntry:'M5',strategy:'В.5',subtype:'',method:'И',methods:['И'],
  initialStop:56,currentStop:56,entries:[{level:'50',price:57,riskShare:100,volume:0.01,executed:true}],targets:[],availableTargets:[{group:'Цели Вульфа',label:'Т4'},{group:'Цели Вульфа',label:'Т6'},{group:'Цели И',label:'1.2'},{group:'Цели И',label:'1.6'},{group:'Цели И',label:'2.0'},{group:'Цели И',label:'2.4'},{group:'Цели И',label:'2.6'},{group:'Цели И',label:'3.6'},{group:'Цели И',label:'4.23'}],ot:['POC'],confirmations:['Объёмы','МакД'],
  comment:'Демонстрационная сделка',initialRisk:50,currentRisk:50,avgPrice:57,totalVolume:0.01,remainingVolume:0.01,exits:[],stops:[],violations:[]};
  state.trades.push(t);save();renderOpen();alert('Демо-сделка добавлена.')
