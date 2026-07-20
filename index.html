@@ -688,7 +688,8 @@ function loadInstrumentDraft(instrument){
  if(!form.methods.length)form.methods=[rules[$('#strategy').value].methods[0]];
  renderStrategy();
  $('#tfSetup').value=d.tfSetup||'M15';$('#tfEntry').value=d.tfEntry||'M5';
- $('#entryCount').value=isRangeGridEntry()?'3':(d.entryCount||'1');
+ const savedEntryCount=String(d.entryCount||'1');
+ $('#entryCount').value=isRangeGridEntry()&&['1','2','3'].includes(savedEntryCount)?savedEntryCount:(isRangeGridEntry()?'1':savedEntryCount);
  $('#entryLevel1').value=[...$('#entryLevel1').options].some(o=>o.value===d.entryLevel1)?d.entryLevel1:$('#entryLevel1').value;
  $('#entryLevel2').value=[...$('#entryLevel2').options].some(o=>o.value===d.entryLevel2)?d.entryLevel2:$('#entryLevel2').value;
  $('#entryLevel3').value=[...$('#entryLevel3').options].some(o=>o.value===d.entryLevel3)?d.entryLevel3:$('#entryLevel3').value;
@@ -696,8 +697,8 @@ function loadInstrumentDraft(instrument){
  $('#entryPrice2').value=d.entryPrice2||'';
  $('#entryPrice3').value=d.entryPrice3||'';
  $('#initialStop').value=d.initialStop||'';
- $('#riskShare1').value=d.riskShare1||(isRangeGridEntry()?'30':'100');
- $('#riskShare2').value=d.riskShare2||(isRangeGridEntry()?'30':'50');
+ $('#riskShare1').value=d.riskShare1||(isRangeGridEntry()?'100':'100');
+ $('#riskShare2').value=d.riskShare2||(isRangeGridEntry()?'40':'50');
  $('#riskShare3').value=d.riskShare3||(isRangeGridEntry()?'40':'33');
  $('#volume1').value=d.volume1||'0.01';
  $('#volume2').value=d.volume2||'0.01';
@@ -706,7 +707,7 @@ function loadInstrumentDraft(instrument){
  $('#isReentry').value=d.isReentry||'Нет';
  $('#prevTradeId').value=d.previousTradeId||'';
  $$('.direction button').forEach(b=>b.classList.toggle('active',b.dataset.dir===form.direction));
- toggleEntry2(false);renderStaticChips();updateInstrumentPriceUI()
+ toggleEntry2(false);renderEntrySelectors();renderStaticChips();updateInstrumentPriceUI()
 }
 function formatCurrentPriceInput(el){
  if(!el||!el.value)return;
@@ -907,7 +908,15 @@ function renderEntrySelectors(){
  const l1=$('#entryLabel1'),l2=$('#entryLabel2'),l3=$('#entryLabel3'),e1=$('#entryLevel1'),e2=$('#entryLevel2'),e3=$('#entryLevel3');
  if(isRangeGridEntry()){
   l1.textContent='Уровень сетки';l2.textContent='Уровень сетки';l3.textContent='Уровень сетки';
-  setSelectOptions(e1,['38'],'38');setSelectOptions(e2,['14'],'14');setSelectOptions(e3,['-15'],'-15');
+  const levels=['38','14','-15'],selects=[e1,e2,e3],count=Number($('#entryCount').value||1),used=new Set();
+  selects.forEach((select,index)=>{
+   if(index>=count){setSelectOptions(select,levels,levels[index]);return}
+   const current=select.value;
+   const preferred=levels.includes(current)&&!used.has(current)?current:levels.find(level=>!used.has(level));
+   const available=levels.filter(level=>!used.has(level)||level===preferred);
+   setSelectOptions(select,available,preferred);
+   used.add(select.value);
+  });
  }else if(isImpulseEntry()){
   l1.textContent='Уровень входа';l2.textContent='Уровень входа';l3.textContent='Уровень входа';
  setSelectOptions(e1,['50','23','-15','Ручной'],'50');
@@ -987,13 +996,17 @@ function renderStrategy(){
  entryCount.querySelector('option[value="3"]').hidden=!rangeGrid;
  entryCount.querySelector('option[value="3"]').disabled=!rangeGrid;
  entryCount.disabled=rangeGrid||(!twoAllowed&&!rangeGrid);
- if(rangeGrid){entryCount.value='3';toggleEntry2()}
+ if(rangeGrid){
+  if(!['1','2','3'].includes(entryCount.value))entryCount.value='1';
+  entryCount.disabled=false;
+  toggleEntry2();
+ }
  else if(!twoAllowed){entryCount.value='1';toggleEntry2()}
  renderEntrySelectors();
 
  const hint=$('#impulseStopHint');
  if(isRangeGridEntry()){
-  hint.innerHTML='<b>Вход по сетке:</b> уровни 38 / 14 / -15. Стоп всегда за уровнем -38; точную цену стопа введи вручную.';
+  hint.innerHTML='<b>Вход по сетке:</b> выбери 1, 2 или 3 уровня из 38 / 14 / -15. Стоп всегда за уровнем -38; точную цену стопа введи вручную.<br>Риск: 1 вход — 100%; 2 входа — 60% ближнему к стопу и 40% дальнему; 3 входа — 40% ближнему и по 30% остальным.';
  }else if(isImpulseEntry()){
   hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.<br>При двух входах риск распределяется автоматически: 60% на ближний к стопу вход и 40% на дальний.';
  }else{
@@ -1028,13 +1041,13 @@ function toggleEntry2(resetShares=true){
  $('#entry2').classList.toggle('hidden',!two);
  $('#entry3').classList.toggle('hidden',!three);
  if(resetShares){
-  $('#riskShare1').value=three?(isRangeGridEntry()?30:34):two?(isImpulseEntry()?60:50):100;
-  $('#riskShare2').value=three?(isRangeGridEntry()?30:33):(isImpulseEntry()?40:50);
+  $('#riskShare1').value=three?(isRangeGridEntry()?30:34):two?((isImpulseEntry()||isRangeGridEntry())?60:50):100;
+  $('#riskShare2').value=three?(isRangeGridEntry()?30:33):((isImpulseEntry()||isRangeGridEntry())?40:50);
   $('#riskShare3').value=three?(isRangeGridEntry()?40:33):33;
  }
  calcRisk()
 }
-$('#entryCount').onchange=()=>{toggleEntry2();saveInstrumentDraft(activeInstrument);calcRisk()};
+$('#entryCount').onchange=()=>{toggleEntry2();renderEntrySelectors();saveInstrumentDraft(activeInstrument);calcRisk()};
 
 function avgEntry(){
  const count=Number($('#entryCount').value||1);
@@ -1061,12 +1074,19 @@ function syncAutomaticRiskShares(){
   inputs[1].readOnly=true;
   return;
  }
- if(!isRangeGridEntry()||count!==3)return;
+ if(!isRangeGridEntry())return;
+ if(count===1){
+  inputs[0].value='100';
+  inputs[0].readOnly=true;
+  return;
+ }
  const stop=num($('#initialStop').value);
- const entries=[1,2,3].map(index=>({index,price:num($('#entryPrice'+index).value)}));
+ const entries=[1,2,3].filter(index=>index<=count).map(index=>({index,price:num($('#entryPrice'+index).value)}));
  const hasPrices=stop&&entries.every(entry=>entry.price);
  const ranked=hasPrices?entries.slice().sort((a,b)=>Math.abs(a.price-stop)-Math.abs(b.price-stop)||a.index-b.index):entries;
- const shares=hasPrices?{[ranked[0].index]:40,[ranked[1].index]:30,[ranked[2].index]:30}:{1:30,2:30,3:40};
+ const shares=count===2
+  ? (hasPrices?{[ranked[0].index]:60,[ranked[1].index]:40}:{1:60,2:40})
+  : (hasPrices?{[ranked[0].index]:40,[ranked[1].index]:30,[ranked[2].index]:30}:{1:30,2:30,3:40});
  entries.forEach(entry=>{inputs[entry.index-1].value=String(shares[entry.index]);inputs[entry.index-1].readOnly=true});
 }
 function maxForEntry(price,share){
@@ -1196,7 +1216,10 @@ $('#instrument').onchange=()=>{
  const el=$('#'+id);
  if(!el)return;
  const event=el.tagName==='TEXTAREA'||el.tagName==='INPUT'?'input':'change';
- el.addEventListener(event,()=>{saveInstrumentDraft(activeInstrument);calcRisk()})
+ el.addEventListener(event,()=>{
+  if(id.startsWith('entryLevel')&&isRangeGridEntry())renderEntrySelectors();
+  saveInstrumentDraft(activeInstrument);calcRisk()
+ })
 });
 
 function resetForm(){
@@ -1256,6 +1279,11 @@ function applyBacktestDateTimeMasks(){
 $('#saveTrade').onclick=()=>{
  const r=calcRisk();if(!r.ok)return alert('Сделка не проходит проверку риска или обязательных полей.');
  if(!validBacktestDateTime())return;
+ if(isRangeGridEntry()){
+  const count=Number($('#entryCount').value||1);
+  const levels=[1,2,3].filter(index=>index<=count).map(index=>$('#entryLevel'+index).value);
+  if(new Set(levels).size!==levels.length)return alert('Для входов по сетке выбери разные уровни: 38, 14 и -15.');
+ }
  if($('#entryCount').value==='2'&&isQuickDoubleEntry()&&$('#entryLevel1').value===$('#entryLevel2').value){
   return alert('При двух исполнениях СЕРЧ + Лимитка вход 1 и вход 2 должны быть разными.');
  }
@@ -2272,7 +2300,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='57';
+const APP_VERSION='58';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
