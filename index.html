@@ -798,9 +798,21 @@ function occupiedRiskForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
   return t.mode!=='Backtest'
  }).reduce((s,t)=>s+reservedRiskForTrade(t),0)
 }
+function backtestDayStartBalance(dayKey){
+ const current=Math.round(Number(state.balance||0)*100)/100;
+ if(!dayKey)return current;
+ const appliedFromSelectedDay=(state.trades||[])
+  .filter(t=>t.mode==='Backtest'&&t.balanceApplied&&t.status!=='not_triggered'&&tradeRiskDateKey(t)>=dayKey)
+  .reduce((sum,t)=>sum+Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0),0);
+ return Math.max(0,Math.round((current-appliedFromSelectedDay)*100)/100)
+}
 function dayRiskBase(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
  // База дня растёт только на полностью закрытую положительную прибыль.
  // Убытки вычитаются отдельно, открытая и защищённая стопом прибыль не учитываются.
+ if(mode==='Backtest'){
+  const base=backtestDayStartBalance(dayKey);
+  return Math.max(0,Math.round((base+closedPositivePnlForDay(dayKey,mode))*100)/100)
+ }
  const storedBase=Number(state.dayStartBalance||0);
  const closedProfit=closedPositivePnlForDay(dayKey,mode);
  const storedComputed=Math.round((storedBase+closedProfit)*100)/100;
@@ -1937,7 +1949,11 @@ function allocateWolfExitVolumes(total,exits,step){
  const weights=labels.map(label=>({volume:labels.length===2?(label==='Т4'?60:40):100}));
  const groupVolumes=allocateExitVolumes(total,weights,step);
  labels.forEach((label,groupIndex)=>{
-  const allocated=allocateExitVolumes(groupVolumes[groupIndex],groups[label],step);
+  const requestedTotal=groups[label].reduce((sum,item)=>sum+Math.max(0,Number(item.volume||0)),0);
+  const scaled=requestedTotal
+   ?groups[label].map(item=>({volume:groupVolumes[groupIndex]*Math.max(0,Number(item.volume||0))/requestedTotal}))
+   :groups[label].map(()=>({volume:0}));
+  const allocated=allocateExitVolumes(groupVolumes[groupIndex],scaled,step);
   groups[label].forEach((item,index)=>{result[item.index]=allocated[index]})
  });
  return result
@@ -2250,7 +2266,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='55';
+const APP_VERSION='56';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
