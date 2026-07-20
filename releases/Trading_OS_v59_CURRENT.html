@@ -1,0 +1,2640 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Trading OS — Mobile Prototype</title>
+<style>
+:root{
+  --bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#dfe5ef;
+  --accent:#2563eb;--accent2:#dbeafe;--good:#0f9f6e;--bad:#dc2626;--warn:#d97706;
+  --shadow:0 6px 24px rgba(15,23,42,.08);--radius:16px;
+}
+[data-theme="dark"]{
+  --bg:#0b1220;--card:#121c2e;--text:#edf3ff;--muted:#9aabc3;--line:#26344b;
+  --accent:#60a5fa;--accent2:#172f50;--good:#34d399;--bad:#fb7185;--warn:#fbbf24;
+  --shadow:0 8px 26px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+.app{max-width:520px;margin:0 auto;min-height:100vh;padding:env(safe-area-inset-top) 12px calc(86px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:20;background:linear-gradient(var(--bg) 88%,transparent);padding:10px 0 12px}
+.brandrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.brand{font-weight:850;letter-spacing:-.03em;font-size:20px}.brand small{font-weight:650;color:var(--muted);font-size:11px;display:block;letter-spacing:0}
+.iconbtn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:8px 10px}
+.kpis{display:grid;grid-template-columns:1.15fr 1fr 1fr .8fr;gap:7px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:8px 8px;box-shadow:var(--shadow);min-width:0}
+.kpi span{display:block;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi b{font-size:13px;white-space:nowrap}
+main{display:block}
+.screen{display:none}.screen.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card h3{font-size:14px;margin:0 0 10px}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 8px}
+.section-title h2{font-size:18px;margin:0}.section-title small{color:var(--muted)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.row.three{grid-template-columns:1fr 1fr 1fr}
+.field{margin-bottom:10px}.field:last-child{margin-bottom:0}
+label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin:0 0 5px}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:11px;padding:10px 11px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+textarea{min-height:70px;resize:vertical}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);padding:3px;border-radius:12px;border:1px solid var(--line)}
+.seg button,.chips button{border:0;background:transparent;color:var(--muted);padding:9px;border-radius:9px;font-weight:750}
+.seg button.active{background:var(--card);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.direction{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.direction button{padding:10px;border-radius:11px;border:1px solid var(--line);background:var(--card);font-weight:800;color:var(--muted)}
+.direction .long.active{background:color-mix(in srgb,var(--good) 16%,var(--card));border-color:var(--good);color:var(--good)}
+.direction .short.active{background:color-mix(in srgb,var(--bad) 14%,var(--card));border-color:var(--bad);color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chips button{border:1px solid var(--line);background:var(--card);padding:8px 10px}
+.chips button.active{border-color:var(--accent);background:var(--accent2);color:var(--accent)}
+.volume-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.volume-actions button{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:11px;padding:11px 7px;font-size:12px;font-weight:850;touch-action:manipulation;cursor:pointer}
+.volume-actions button:active{transform:translateY(1px);background:var(--accent2);color:var(--accent);border-color:var(--accent)}
+.volume-actions .primary-action{background:var(--accent2);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+.exit-volume-box{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:13px;background:var(--bg)}
+.exit-volume-value{font-size:12px;color:var(--muted);margin-top:7px;text-align:center}
+
+.mini-note{font-size:11px;color:var(--muted);line-height:1.4}
+.riskbox{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.metric{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px}
+.metric span{display:block;font-size:9px;color:var(--muted)}.metric b{font-size:13px}
+.alert{padding:10px 11px;border-radius:11px;font-size:12px;margin-top:9px}
+.alert.good{background:color-mix(in srgb,var(--good) 12%,transparent);color:var(--good)}
+.alert.bad{background:color-mix(in srgb,var(--bad) 11%,transparent);color:var(--bad)}
+.alert.warn{background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--warn)}
+.primary{width:100%;border:0;border-radius:13px;padding:13px;background:var(--accent);color:white;font-weight:850}
+.secondary{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;background:var(--card);color:var(--text);font-weight:750}
+.trade{border-left:4px solid var(--accent)}
+.trade-head{display:flex;justify-content:space-between;gap:8px;align-items:start}
+.trade-title{font-size:16px;font-weight:850}.badge{font-size:10px;border-radius:999px;padding:5px 8px;background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+.trade-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.actions .wide{grid-column:1/-1}
+.bottomnav{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:0;width:min(520px,100%);display:grid;grid-template-columns:repeat(4,1fr);background:color-mix(in srgb,var(--card) 95%,transparent);border-top:1px solid var(--line);padding:7px 8px calc(7px + env(safe-area-inset-bottom));backdrop-filter:blur(16px)}
+.bottomnav button{border:0;background:transparent;color:var(--muted);padding:6px 2px;font-size:10px;font-weight:750}
+.bottomnav button b{display:block;font-size:18px;line-height:1.1;margin-bottom:2px}
+.bottomnav button.active{color:var(--accent)}
+.hidden{display:none!important}
+hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.details{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:8px}
+.details summary{cursor:pointer;padding:11px;font-weight:800;font-size:12px;background:var(--bg)}
+.details .inside{padding:11px}
+.arch{font-size:12px;line-height:1.55}.arch strong{color:var(--accent)}
+.modal{position:fixed;inset:0;z-index:99;background:rgba(2,6,23,.58);display:none;align-items:end;justify-content:center}
+.modal.show{display:flex}.sheet{width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--card);border-radius:22px 22px 0 0;padding:16px 14px calc(18px + env(safe-area-inset-bottom))}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.sheet-head h3{margin:0}
+.closex{border:0;background:var(--bg);color:var(--text);border-radius:10px;padding:7px 10px}
+.empty{text-align:center;color:var(--muted);padding:26px 12px;font-size:13px}
+.code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10px;background:var(--bg);border:1px solid var(--line);padding:9px;border-radius:10px;overflow:auto}
+.volume-hint{margin-top:6px;padding:8px 9px;border-radius:10px;background:var(--accent2);color:var(--accent);font-size:11px;font-weight:800}
+.volume-hint.bad{background:color-mix(in srgb,var(--bad) 13%,var(--card));color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 42%,var(--line))}
+.volume-stepper{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin-top:8px}
+.volume-stepper button{height:42px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--text);font-size:22px;font-weight:850}
+.volume-stepper button:disabled{opacity:.4}
+.volume-range{padding:0;border:0;background:transparent;box-shadow:none}
+.volume-range:focus{box-shadow:none}
+.volume-range:disabled{opacity:.45}
+.step-note{font-size:10px;color:var(--muted);margin-top:5px}
+.target-plan{border:1px solid var(--line);border-radius:13px;padding:10px;margin-top:8px;background:var(--bg)}
+.target-plan-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.target-plan-head b{font-size:13px}.target-plan-head span{font-size:10px;color:var(--muted)}
+.target-plan .row{grid-template-columns:1.1fr .9fr}
+.exit-ledger{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.exit-row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:11px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.exit-row:last-child{border-bottom:0}
+.required-badge{font-size:9px;font-weight:850;color:var(--accent);background:var(--accent2);border-radius:999px;padding:4px 7px;margin-left:6px}
+.checkline{display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid var(--line);border-radius:11px;background:var(--bg);margin-bottom:8px;font-size:12px;font-weight:750}
+.checkline input{width:auto;margin:0;transform:scale(1.15)}
+.chips button:disabled{opacity:.8;cursor:default}
+
+.price-field label{font-size:12px;font-weight:900}
+.price-field input{font-size:20px;font-weight:850;padding:15px 14px;border-width:2px}
+.entry-price label{color:var(--accent)}
+.entry-price input{
+  border-color:color-mix(in srgb,var(--accent) 65%,var(--line));
+  background:color-mix(in srgb,var(--accent) 8%,var(--card));
+}
+.stop-price label{color:var(--bad)}
+.stop-price input{
+  border-color:color-mix(in srgb,var(--bad) 70%,var(--line));
+  background:color-mix(in srgb,var(--bad) 7%,var(--card));
+}
+.contract-field label{font-size:12px;font-weight:900;color:var(--accent)}
+.contract-field>input{
+  min-height:62px;
+  font-size:25px;
+  font-weight:900;
+  text-align:center;
+  border-width:2px;
+  border-color:color-mix(in srgb,var(--accent) 60%,var(--line));
+  background:color-mix(in srgb,var(--accent) 7%,var(--card));
+}
+.volume-stepper{grid-template-columns:58px 1fr 58px;gap:10px;margin-top:10px}
+.volume-stepper button{height:54px;font-size:28px;touch-action:manipulation}
+.volume-actions button{min-height:48px;font-size:12px}
+.mobile-section-note{font-size:10px;color:var(--muted);margin-top:5px}
+input,select,textarea,button{min-height:44px}
+@media (max-width:560px){
+  .app{padding-left:10px;padding-right:10px}
+  .row,.row.three{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi{padding:9px}
+  .kpi b{font-size:14px}
+  .card{padding:12px}
+  .trade-grid{grid-template-columns:1fr 1fr}
+  .actions{grid-template-columns:1fr}
+  .actions .wide{grid-column:auto}
+  .sheet{max-height:94vh;padding:16px 12px calc(20px + env(safe-area-inset-bottom))}
+  .bottomnav button{font-size:11px}
+  .bottomnav button b{font-size:20px}
+}
+@media (max-width:370px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .trade-grid{grid-template-columns:1fr}
+  .volume-actions{grid-template-columns:1fr}
+}
+
+
+/* v25 — compact mobile */
+@media (max-width:560px){
+  :root{--radius:12px;--shadow:0 3px 12px rgba(15,23,42,.06)}
+  .app{max-width:480px;padding:env(safe-area-inset-top) 8px calc(64px + env(safe-area-inset-bottom))}
+  header{padding:6px 0 7px}
+  .brandrow{margin-bottom:5px}
+  .brand{font-size:17px}.brand small{font-size:9px}
+  .iconbtn{min-height:34px;padding:4px 9px;border-radius:9px}
+  .kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .kpi{padding:5px 5px;border-radius:9px;box-shadow:none}
+  .kpi span{font-size:7.5px}
+  .kpi b{font-size:10.5px;letter-spacing:-.02em}
+  .section-title{margin:4px 2px 6px}
+  .section-title h2{font-size:16px}.section-title small{font-size:10px}
+  .card{padding:9px;margin-bottom:7px;border-radius:12px;box-shadow:none}
+  .card h3{font-size:13px;margin-bottom:7px}
+  .row,.row.three{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .field{margin-bottom:7px}
+  label{font-size:10px;margin-bottom:3px}
+  input,select,textarea{min-height:39px;padding:7px 8px;border-radius:9px;font-size:16px}
+  textarea{min-height:62px}
+  button{min-height:36px}
+  .seg{padding:2px;border-radius:9px}
+  .seg button{padding:5px 6px;border-radius:7px;font-size:11px}
+  .direction{gap:5px}
+  .direction button{padding:6px;font-size:12px;border-radius:9px}
+  .chips{gap:5px}
+  .chips button{min-height:33px;padding:5px 8px;font-size:11px;border-radius:8px}
+  details{border-radius:10px}
+  summary{padding:8px 9px;font-size:12px}
+  details .inside{padding:8px}
+  .price-field input{min-height:45px;padding:8px 9px;font-size:18px}
+  .contract-field{grid-column:1/-1}
+  .contract-field>input{min-height:47px;font-size:21px;padding:7px}
+  .volume-stepper{grid-template-columns:42px 1fr 42px;gap:6px;margin-top:6px}
+  .volume-stepper button{height:40px;min-height:40px;font-size:21px;border-radius:9px}
+  .volume-actions{gap:5px;margin-top:6px}
+  .volume-actions button{min-height:37px;padding:6px 4px;font-size:10.5px;border-radius:9px}
+  .step-note,.mobile-section-note,.mini-note{font-size:9px}
+  .alert{padding:8px 9px;font-size:10.5px;border-radius:9px}
+  .metrics{gap:5px}
+  .metric{padding:6px;border-radius:8px}
+  .metric span{font-size:8px}.metric b{font-size:11px}
+  .trade-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin:7px 0}
+  .trade{padding:9px}
+  .trade-title{font-size:14px}
+  .badge{font-size:8px;padding:3px 5px}
+  .actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .actions .wide{grid-column:1/-1}
+  .primary{min-height:41px;padding:8px;border-radius:10px;font-size:12px}
+  .secondary{min-height:37px;padding:7px 5px;border-radius:9px;font-size:10.5px}
+  .bottomnav{width:min(480px,100%);padding:4px 5px calc(4px + env(safe-area-inset-bottom))}
+  .bottomnav button{min-height:46px;padding:3px 1px;font-size:8.5px}
+  .bottomnav button b{font-size:16px;margin-bottom:1px}
+  .sheet{max-height:96vh;padding:10px 9px calc(13px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0}
+  .sheet-head{margin-bottom:7px}.sheet-head h3{font-size:15px}
+  .closex{min-height:32px!important;width:32px!important;font-size:18px!important}
+  .exit-row{padding:7px 0;font-size:10.5px}
+}
+@media (max-width:350px){
+  .kpi span{font-size:7px}.kpi b{font-size:9.5px}
+  .row,.row.three{grid-template-columns:1fr}
+  .compact-pair{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .trade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header>
+  <div class="brandrow">
+    <div class="brand">Trading OS <small>мобильный журнал сделок · <span id="appVersionLabel"></span></small></div>
+    <button class="iconbtn" id="themeBtn" aria-label="Сменить тему">◐</button>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><span>Баланс</span><b id="kBalance">$1 000</b></div>
+    <div class="kpi"><span>Риск сделки</span><b id="kRisk">$10</b></div>
+    <div class="kpi"><span>Остаток дня</span><b id="kDay">$30</b></div>
+    <div class="kpi"><span>Открыто</span><b id="kOpen">0</b></div>
+  </div>
+</header>
+
+<main>
+<section class="screen active" data-screen="new">
+  <div class="section-title"><h2>Новая сделка</h2><small id="draftId">Новый ID</small></div>
+
+  <div class="card">
+    <div class="seg" id="modeSeg">
+      <button data-value="Real" class="active">Real</button>
+      <button data-value="Backtest">Backtest</button>
+    </div>
+    <div id="backtestDate" class="row hidden" style="margin-top:10px">
+      <div class="field"><label>Дата, дд.мм.гг</label><input id="tradeDate" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="16.07.26"></div>
+      <div class="field"><label>Время, чч:мм</label><input id="tradeTime" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="12:30"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Инструмент</label>
+        <select id="instrument"><option>GOLD</option><option selected>SILVER</option><option>BR</option><option>WTI</option><option>EURUSD</option><option>USDCAD</option></select>
+      </div>
+      <div class="field"><label>Направление</label>
+        <div class="direction"><button class="long active" data-dir="Long">Long</button><button class="short" data-dir="Short">Short</button></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>ТФ сетапа</label><select id="tfSetup"><option>M5</option><option selected>M15</option><option>H1</option><option>H4</option></select></div>
+      <div class="field"><label>ТФ входа</label><select id="tfEntry"><option selected>M5</option><option>M15</option><option>H1</option><option>H4</option></select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="field"><label>Стратегия</label>
+      <select id="strategy">
+        <option value="В.5">Вульф — В.5</option><option value="В+И">Вульф — В+И</option><option value="ВС">Вульф — ВС</option>
+        <option value="ВвД">Вульф в диапазоне — ВвД</option><option value="Диапазон">Диапазон</option><option value="К-3">К-3</option>
+        <option value="Импульс">Импульс</option><option value="По сетке">По сетке</option><option value="Стата">Стата</option><option value="Слабый">Слабый</option>
+      </select>
+    </div>
+    <div id="subtypeWrap" class="field hidden"><label>Подтип / сценарий</label><select id="subtype"></select></div>
+    <div id="gridLevelWrap" class="field hidden"><label>Уровень присоединения</label><select id="gridLevel"><option value="1.6">1.6</option><option value="2.6">2.6</option><option value="3.6">3.6</option></select></div>
+    <div class="field"><label>Способ входа</label><div class="chips" id="entryMethods"></div></div>
+    <div class="field hidden" id="reentryWrap"><label>Перезаход</label><div class="row"><select id="isReentry"><option value="Нет">Нет</option><option value="Да">Да</option></select><input id="prevTradeId" placeholder="ID предыдущей"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Количество входов</label><select id="entryCount"><option value="1">1 вход</option><option value="2">2 входа</option><option value="3">3 входа</option></select></div>
+      <div class="field price-field stop-price"><label>Цена первоначального стопа</label><input id="initialStop" inputmode="decimal" placeholder="56.000"></div>
+    </div>
+    <div id="entry1" class="details">
+      <summary>Вход 1 — основной</summary>
+      <div class="inside row">
+        <div class="field"><label id="entryLabel1">Уровень</label><select id="entryLevel1"><option>50</option><option>23</option><option>-15</option><option>Ручной</option></select></div>
+        <div class="field price-field entry-price"><label>Цена входа 1</label><input id="entryPrice1" inputmode="decimal" placeholder="57.000"></div>
+        <div class="field"><label>Доля риска, %</label><input id="riskShare1" type="number" value="100" min="0" max="100"></div>
+        <div class="field contract-field"><label>Количество контрактов</label>
+<input id="volume1" type="number" inputmode="decimal" min="0.01" step="0.01" value="0.01">
+<div class="volume-stepper">
+<button type="button" id="volumeMinus1" aria-label="Уменьшить объём">−</button>
+<input class="volume-range" id="volumeRange1" type="range" min="0.01" max="0.01" step="0.01" value="0.01">
+<button type="button" id="volumePlus1" aria-label="Увеличить объём">+</button>
+</div>
+<div class="volume-actions">
+<button type="button" id="volumeMin1">0.01</button>
+<button type="button" id="volumeHalf1">50% максимума</button>
+<button type="button" id="volumeMax1" class="primary-action">Максимум</button>
+</div>
+<div class="step-note">Кнопки, шкала или ручной ввод · шаг по спецификации инструмента</div>
+<div class="volume-hint" id="volumeHint1"><span>Максимум: —</span></div>
+</div>
+      </div>
+    </div>
+    <div id="entry2" class="details hidden">
+      <summary>Вход 2 — добор</summary>
+      <div class="inside row">
+        <div class="field"><label id="entryLabel2">Уровень</label><select id="entryLevel2"><option>23</option><option>50</option><option>-15</option><option>Ручной</option></select></div>
+        <div class="field price-field entry-price"><label>Цена входа 2</label><input id="entryPrice2" inputmode="decimal" placeholder="56.700"></div>
+        <div class="field"><label>Доля риска, %</label><input id="riskShare2" type="number" value="50" min="0" max="100"></div>
+        <div class="field contract-field"><label>Количество контрактов</label>
+<input id="volume2" type="number" inputmode="decimal" min="0.01" step="0.01" value="0.01">
+<div class="volume-stepper">
+<button type="button" id="volumeMinus2" aria-label="Уменьшить объём">−</button>
+<input class="volume-range" id="volumeRange2" type="range" min="0.01" max="0.01" step="0.01" value="0.01">
+<button type="button" id="volumePlus2" aria-label="Увеличить объём">+</button>
+</div>
+<div class="volume-actions">
+<button type="button" id="volumeMin2">0.01</button>
+<button type="button" id="volumeHalf2">50% максимума</button>
+<button type="button" id="volumeMax2" class="primary-action">Максимум</button>
+</div>
+<div class="step-note">Кнопки, шкала или ручной ввод · шаг по спецификации инструмента</div>
+<div class="volume-hint" id="volumeHint2"><span>Максимум: —</span></div>
+</div>
+      </div>
+    </div>
+    <div id="entry3" class="details hidden">
+      <summary>Вход 3 — добор</summary>
+      <div class="inside row">
+        <div class="field"><label id="entryLabel3">Уровень</label><select id="entryLevel3"><option>-15</option><option>14</option><option>38</option><option>Ручной</option></select></div>
+        <div class="field price-field entry-price"><label>Цена входа 3</label><input id="entryPrice3" inputmode="decimal" placeholder="56.400"></div>
+        <div class="field"><label>Доля риска, %</label><input id="riskShare3" type="number" value="33" min="0" max="100"></div>
+        <div class="field contract-field"><label>Количество контрактов</label>
+<input id="volume3" type="number" inputmode="decimal" min="0.01" step="0.01" value="0.01">
+<div class="volume-stepper">
+<button type="button" id="volumeMinus3" aria-label="Уменьшить объём">−</button>
+<input class="volume-range" id="volumeRange3" type="range" min="0.01" max="0.01" step="0.01" value="0.01">
+<button type="button" id="volumePlus3" aria-label="Увеличить объём">+</button>
+</div>
+<div class="volume-actions">
+<button type="button" id="volumeMin3">0.01</button>
+<button type="button" id="volumeHalf3">50% максимума</button>
+<button type="button" id="volumeMax3" class="primary-action">Максимум</button>
+</div>
+<div class="step-note">Кнопки, шкала или ручной ввод · шаг по спецификации инструмента</div>
+<div class="volume-hint" id="volumeHint3"><span>Максимум: —</span></div>
+</div>
+      </div>
+    </div>
+    <div class="mini-note" id="impulseStopHint">Средняя цена считается взвешенно по объёмам. Для двух входов сумма долей риска должна быть 100%.</div>
+  </div>
+
+  <div class="card">
+    <h3>Расчёт риска</h3>
+    <div class="riskbox">
+      <div class="metric"><span>Доступно</span><b id="rAllowed">$10.00</b></div>
+      <div class="metric"><span>Риск 0.01</span><b id="rMin">$0.00</b></div>
+      <div class="metric"><span>Риск объёма</span><b id="rActual">$0.00</b></div>
+      <div class="metric"><span>Макс. объём</span><b id="rMaxVol">0.00</b></div>
+      <div class="metric"><span>Средняя</span><b id="rAvg">—</b></div>
+      <div class="metric"><span>Доля риска</span><b id="rShares">100%</b></div>
+    </div>
+    <div id="riskAlert" class="alert warn">Введите цену входа и стоп.</div>
+  </div>
+
+
+  <div class="card">
+    <div class="field"><label>ОТ</label><div class="chips multi" id="otChips"></div></div>
+    <div class="field"><label>Подтверждения</label><div class="chips multi" id="confirmChips"></div></div>
+    <div class="field"><label>Комментарий к входу</label><textarea id="entryComment" placeholder="Коротко: контекст, идея, отмена сценария"></textarea></div>
+  </div>
+
+  <button class="primary" id="saveTrade">Открыть сделку</button>
+</section>
+
+<section class="screen" data-screen="open">
+  <div class="section-title"><h2>Журнал открытых сделок</h2><small id="openCountLabel">0 сделок</small></div>
+  <div id="openList"></div>
+</section>
+
+<section class="screen" data-screen="done">
+  <div class="section-title"><h2>Журнал</h2><small>даты, фиксации и результат</small></div>
+  <div class="card">
+    <div class="seg" id="doneSeg"><button class="active" data-done="pending">Нужно завершить</button><button data-done="history">История</button></div>
+  </div>
+  <div id="pendingList"></div>
+  <div id="historyList" class="hidden"></div>
+</section>
+
+<section class="screen" data-screen="settings">
+  <div class="section-title"><h2>Настройки</h2><small>счёт и архитектура</small></div>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Текущий баланс, USD</label><input id="setBalance" type="number" step="0.01"></div>
+      <div class="field"><label>Риск на сделку, %</label><input id="setRisk" type="number" step="0.1" min="0" max="100"></div>
+      <div class="field"><label>Дневной лимит, %</label><input id="setDayRisk" type="number" step="0.1" min="0" max="100"><div class="mini-note">Считается от баланса на начало текущего дня.</div></div>
+      <div class="field"><label>Время сделок</label><select id="setTimezone" disabled><option value="Europe/Moscow">МСК (Europe/Moscow)</option></select></div>
+    </div>
+    <button class="primary" id="saveSettings">Сохранить настройки</button>
+  </div>
+
+  <div class="card">
+    <h3>Операции с депозитом</h3>
+    <div class="row">
+      <div class="field"><label>Сумма, USD</label><input id="balanceOpAmount" inputmode="decimal" placeholder="например 100.00"></div>
+      <div class="field"><label>Комментарий</label><input id="balanceOpComment" placeholder="необязательно"></div>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="withdrawBtn">Снять</button>
+      <button class="primary" id="depositBtn">Внести</button>
+    </div>
+    <div id="balanceOpsSummary" class="alert good">Внесено: $0.00 · Снято: $0.00</div>
+  </div>
+
+  <div class="card">
+    <h3>Сохранение и выгрузка</h3>
+    <div class="actions">
+      <button class="primary" id="backupBtn">Скачать полную копию</button>
+      <button class="secondary" id="restoreBtn">Восстановить из копии</button>
+      <button class="secondary wide" id="analysisExportBtn">Экспорт для анализа</button>
+    </div>
+    <input id="restoreFile" type="file" accept="application/json,.json" class="hidden">
+    <div class="alert good" id="storageStatus">Данные сохраняются автоматически.</div>
+    <div class="mini-note">Полная копия содержит все сделки, входы, выходы, стопы, баланс, операции, настройки, черновики, ОТ и подтверждения.</div>
+  </div>
+
+  <details class="details" open>
+    <summary>Архитектура проекта</summary>
+    <div class="inside arch">
+      <p><strong>Сейчас:</strong> один автономный HTML-файл → интерфейс → бизнес-правила → localStorage.</p>
+      <p><strong>Сущности:</strong> TradeIdea, Entry, Exit, StopEvent, Violation, BalanceEvent, InstrumentSpec, Settings.</p>
+      <p><strong>Поток статусов:</strong> Черновик → Открыта → Полностью закрыта → Нужно завершить → Завершена.</p>
+      <p><strong>Позже:</strong> интерфейс не меняется; слой хранения заменяется на Apps Script + Google Sheets.</p>
+      <div class="code">UI → Validation/Strategy Engine → Risk Engine → Trade State Machine → Storage Adapter
+localStorage сейчас / Google Sheets позже</div>
+    </div>
+  </details>
+
+  <details class="details">
+    <summary>Спецификация инструментов</summary>
+    <div class="inside" id="instrumentSpecs"></div>
+  </details>
+
+  <details class="details">
+    <summary>Тестовые данные</summary>
+    <div class="inside">
+      <button class="secondary" id="addDemo">Добавить демонстрационную открытую сделку</button>
+      <div style="height:8px"></div>
+      <button class="secondary" id="clearJournal">Очистить сделки · баланс сохранить</button>
+      <div style="height:8px"></div>
+      <button class="secondary" id="resetAll">Очистить локальные данные</button>
+    </div>
+  </details>
+</section>
+</main>
+</div>
+
+<nav class="bottomnav" id="nav">
+  <button class="active" data-nav="new"><b>＋</b>Новая</button>
+  <button data-nav="open"><b>◉</b>Журнал</button>
+  <button data-nav="done"><b>✓</b>Завершённые</button>
+  <button data-nav="settings"><b>⚙</b>Настройки</button>
+</nav>
+
+<div class="modal" id="tradeModal"><div class="sheet">
+  <div class="sheet-head"><h3 id="modalTitle">Сделка</h3><button class="closex" data-close>Закрыть</button></div>
+  <div id="modalBody"></div>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const moneyInput=n=>Number(n||0).toFixed(2);
+const signedMoney=n=>`${Number(n||0)>=0?'+':''}${money(n)}`;
+function riskText(v){
+ const n=Number(v||0);
+ if(n<0)return `+${money(Math.abs(n))}`;
+ return money(n);
+}
+function cleanMoneyField(el){
+ const v=Number(String(el.value||'').replace(',','.'));
+ if(!Number.isFinite(v))return;
+ el.value=v.toFixed(2);
+}
+const num=v=>Number(String(v??'').replace(',','.'))||0;
+const floorStep=(v,s=.01)=>Math.floor((v+1e-9)/s)*s;
+const nowIso=()=>new Date().toISOString();
+const uid=()=> 'TR-'+new Date().toISOString().slice(2,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+
+const MOSCOW_TIME_ZONE='Europe/Moscow';
+const defaults={theme:'light',balance:1000,riskPct:1,dayRiskPct:3,timezone:MOSCOW_TIME_ZONE,mode:'Real',dayStartBalance:1000,dayKey:'',balanceEvents:[],trades:[],instrumentDrafts:{},lastSavedAt:'',lastBackupAt:''};
+function cloneDefaults(){return JSON.parse(JSON.stringify(defaults))}
+function loadState(){
+ const raw=localStorage.getItem('tradingOS_v3');
+ if(!raw)return cloneDefaults();
+ try{
+  const parsed=JSON.parse(raw);
+  return parsed&&typeof parsed==='object'?{...cloneDefaults(),...parsed}:cloneDefaults()
+ }catch(err){
+  try{localStorage.setItem('tradingOS_v3_corrupt_backup',raw)}catch(_){}
+  return cloneDefaults()
+ }
+}
+let state=loadState();
+
+function timeZoneOrLocal(value){return value&&value!=='local'?value:undefined}
+function appTimeZone(){return MOSCOW_TIME_ZONE}
+function tradeTimeZone(t){
+ return t&&Object.prototype.hasOwnProperty.call(t,'timezone')?timeZoneOrLocal(t.timezone):appTimeZone()
+}
+function dateKeyInTimeZone(value,timeZone){
+ const date=value instanceof Date?value:new Date(value);
+ if(isNaN(date))return '';
+ const options={year:'numeric',month:'2-digit',day:'2-digit'};
+ if(timeZone)options.timeZone=timeZone;
+ const parts=new Intl.DateTimeFormat('en-GB',options).formatToParts(date);
+ const get=type=>(parts.find(x=>x.type===type)||{}).value||'';
+ return `${get('year')}-${get('month')}-${get('day')}`
+}
+function appDateKey(value=new Date()){return dateKeyInTimeZone(value,appTimeZone())}
+function formatAppDateTime(value,timeZone=appTimeZone()){
+ const date=value instanceof Date?value:new Date(value);
+ if(isNaN(date))return String(value||'—');
+ const options={day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'};
+ if(timeZone)options.timeZone=timeZone;
+ return date.toLocaleString('ru-RU',options)
+}
+const APP_SCHEMA_VERSION=39;
+if((state.schemaVersion||0)<29){
+  state.balance=Math.round((Number(state.balance)||0)*100)/100;
+  state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
+  state.trades=Array.isArray(state.trades)?state.trades:[];
+  state.instrumentDrafts=state.instrumentDrafts||{};
+  if(state.instrumentDrafts.BRENT&&!state.instrumentDrafts.BR)state.instrumentDrafts.BR=state.instrumentDrafts.BRENT;
+  delete state.instrumentDrafts.BRENT;
+  state.dayKey=state.dayKey||appDateKey();
+  state.dayStartBalance=Number.isFinite(Number(state.dayStartBalance))?Number(state.dayStartBalance):state.balance;
+  state.trades.forEach(t=>{
+    if(t.instrument==='BRENT')t.instrument='BR';
+    t.entries=Array.isArray(t.entries)?t.entries:[];
+    t.exits=Array.isArray(t.exits)?t.exits:[];
+    t.stops=Array.isArray(t.stops)?t.stops:[];
+    t.ot=Array.isArray(t.ot)?t.ot:[];
+    t.confirmations=Array.isArray(t.confirmations)?t.confirmations:[];
+    t.methods=Array.isArray(t.methods)?t.methods:String(t.method||'').split(' + ').filter(Boolean);
+    t.entries.forEach(e=>{
+      if(!e.execution)e.execution=e.level||'Ручной';
+      if(e.executed==null)e.executed=true;
+    });
+    t.pnl=t.exits.reduce((s,e)=>s+Number(e.pnl||0),0);
+    t.rResult=t.initialRisk?t.pnl/t.initialRisk:0;
+    if(t.balanceApplied==null)t.balanceApplied=!!t.closedAt;
+    if(!Array.isArray(t.priceReachedTargets)){
+      t.priceReachedTargets=[];
+      if(t.reachedT4)t.priceReachedTargets.push('Т4');
+      if(t.reachedT6)t.priceReachedTargets.push('Т6');
+    }
+    t.priceReachedByGroup=t.priceReachedByGroup&&typeof t.priceReachedByGroup==='object'?t.priceReachedByGroup:{};
+    t.maxTargets=t.maxTargets&&typeof t.maxTargets==='object'?t.maxTargets:{};
+    const lastExit=t.exits.length?t.exits[t.exits.length-1]:null;
+    if(t.status==='pending'&&Number(t.remainingVolume||0)<=0.0001&&lastExit&&['Стоп','БУ'].includes(lastExit.reason)){
+      autoFinalizeProtectiveExit(t,lastExit.reason);
+    }
+  });
+  state.dayKey=appDateKey();
+  state.dayStartBalance=Number.isFinite(Number(state.dayStartBalance))?Number(state.dayStartBalance):state.balance;
+  rebaseBalanceEvents();
+  state.schemaVersion=29;
+  localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+}
+if((state.schemaVersion||0)<37){
+ const legacyTimeZone=state.timezone||'local';
+ (state.trades||[]).forEach(t=>{
+  if(!Object.prototype.hasOwnProperty.call(t,'timezone'))t.timezone=legacyTimeZone;
+ });
+ state.timezone=MOSCOW_TIME_ZONE;
+ state.schemaVersion=37;
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+}
+let form={mode:state.mode||'Real',direction:'Long',method:'СЕРЧ',methods:['СЕРЧ'],targets:[],ot:[],conf:[],doneView:'pending'};
+
+const specs={
+ GOLD:{digits:2,contract:100,step:.01,example:'4026.00'},
+ SILVER:{digits:3,contract:5000,step:.01,example:'56.300'},
+ BR:{digits:2,contract:1000,step:.01,example:'80.25'},
+ WTI:{digits:2,contract:1000,step:.01,example:'76.40'},
+ EURUSD:{digits:5,contract:100000,step:.01,example:'1.08500'},
+ USDCAD:{digits:5,contract:100000,step:.01,example:'1.36500'}
+};
+
+function instrumentSpec(instrument=$('#instrument').value){
+ return specs[instrument]||{digits:2,contract:1,step:.01,example:'0.00'}
+}
+function priceText(value,instrument=$('#instrument').value){
+ const n=num(value);
+ return n ? n.toFixed(instrumentSpec(instrument).digits) : ''
+}
+function updateInstrumentPriceUI(){
+ const sp=instrumentSpec();
+ const example=sp.example;
+ $('#entryPrice1').placeholder=example;
+ $('#entryPrice2').placeholder=example;
+ $('#entryPrice3').placeholder=example;
+ $('#initialStop').placeholder=example;
+ ['entryPrice1','entryPrice2','entryPrice3','initialStop'].forEach(id=>{
+  const el=$('#'+id);
+  if(el.value&&num(el.value))el.value=num(el.value).toFixed(sp.digits)
+ });
+}
+function persistStateOnly(){
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state))
+}
+function saveInstrumentDraft(instrument){
+ if(!instrument||!$('#strategy'))return;
+ state.instrumentDrafts=state.instrumentDrafts||{};
+ state.instrumentDrafts[instrument]={
+  direction:form.direction,
+  strategy:$('#strategy').value,
+  subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,
+  gridLevel:$('#gridLevel').value,
+  methods:[...form.methods],
+  tfSetup:$('#tfSetup').value,
+  tfEntry:$('#tfEntry').value,
+  entryCount:$('#entryCount').value,
+  entryLevel1:$('#entryLevel1').value,
+  entryLevel2:$('#entryLevel2').value,
+  entryLevel3:$('#entryLevel3').value,
+  entryPrice1:$('#entryPrice1').value,
+  entryPrice2:$('#entryPrice2').value,
+  entryPrice3:$('#entryPrice3').value,
+  initialStop:$('#initialStop').value,
+  riskShare1:$('#riskShare1').value,
+  riskShare2:$('#riskShare2').value,
+  riskShare3:$('#riskShare3').value,
+  volume1:$('#volume1').value||'0.01',
+  volume2:$('#volume2').value||'0.01',
+  volume3:$('#volume3').value||'0.01',
+  ot:[...form.ot],
+  confirmations:[...form.conf],
+  comment:$('#entryComment').value,
+  isReentry:$('#isReentry').value,
+  previousTradeId:$('#prevTradeId').value
+ };
+ persistStateOnly()
+}
+function loadInstrumentDraft(instrument){
+ const d=(state.instrumentDrafts||{})[instrument];
+ if(!d){
+  form.direction='Long';
+  form.methods=['СЕРЧ'];
+  form.ot=[];form.conf=[];
+  $('#strategy').value='В.5';
+  renderStrategy();
+  $('#tfSetup').value='M15';$('#tfEntry').value='M5';
+  $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';
+  $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
+  $('#riskShare1').value='100';$('#riskShare2').value='50';$('#riskShare3').value='33';
+  $('#entryCount').value='1';
+  $('#entryComment').value='';
+  $('#isReentry').value='Нет';$('#prevTradeId').value='';
+  $$('.direction button').forEach(b=>b.classList.toggle('active',b.dataset.dir==='Long'));
+  toggleEntry2();renderStaticChips();updateInstrumentPriceUI();
+  return
+ }
+ form.direction=d.direction||'Long';
+ form.methods=Array.isArray(d.methods)&&d.methods.length?[...d.methods]:['СЕРЧ'];
+ form.ot=Array.isArray(d.ot)?[...d.ot]:[];
+ form.conf=Array.isArray(d.confirmations)?[...d.confirmations]:[];
+ $('#strategy').value=rules[d.strategy]?d.strategy:'В.5';
+ renderStrategy();
+ if(d.subtype&&[...$('#subtype').options].some(o=>o.value===d.subtype)){
+  $('#subtype').value=d.subtype;
+  renderStrategy();
+ }
+ if(d.gridLevel&&['1.6','2.6','3.6'].includes(d.gridLevel))$('#gridLevel').value=d.gridLevel;
+ form.methods=(Array.isArray(d.methods)?d.methods:form.methods).filter(x=>(rules[$('#strategy').value].methods||[]).includes(x)||($('#strategy').value==='Слабый'&&$('#subtype').value==='от Т5'&&x==='К-3'));
+ if(!form.methods.length)form.methods=[rules[$('#strategy').value].methods[0]];
+ renderStrategy();
+ $('#tfSetup').value=d.tfSetup||'M15';$('#tfEntry').value=d.tfEntry||'M5';
+ const savedEntryCount=String(d.entryCount||'1');
+ $('#entryCount').value=isRangeGridEntry()&&['1','2','3'].includes(savedEntryCount)?savedEntryCount:(isRangeGridEntry()?'1':savedEntryCount);
+ $('#entryLevel1').value=[...$('#entryLevel1').options].some(o=>o.value===d.entryLevel1)?d.entryLevel1:$('#entryLevel1').value;
+ $('#entryLevel2').value=[...$('#entryLevel2').options].some(o=>o.value===d.entryLevel2)?d.entryLevel2:$('#entryLevel2').value;
+ $('#entryLevel3').value=[...$('#entryLevel3').options].some(o=>o.value===d.entryLevel3)?d.entryLevel3:$('#entryLevel3').value;
+ $('#entryPrice1').value=d.entryPrice1||'';
+ $('#entryPrice2').value=d.entryPrice2||'';
+ $('#entryPrice3').value=d.entryPrice3||'';
+ $('#initialStop').value=d.initialStop||'';
+ $('#riskShare1').value=d.riskShare1||(isRangeGridEntry()?'100':'100');
+ $('#riskShare2').value=d.riskShare2||(isRangeGridEntry()?'40':'50');
+ $('#riskShare3').value=d.riskShare3||(isRangeGridEntry()?'40':'33');
+ $('#volume1').value=d.volume1||'0.01';
+ $('#volume2').value=d.volume2||'0.01';
+ $('#volume3').value=d.volume3||'0.01';
+ $('#entryComment').value=d.comment||'';
+ $('#isReentry').value=d.isReentry||'Нет';
+ $('#prevTradeId').value=d.previousTradeId||'';
+ $$('.direction button').forEach(b=>b.classList.toggle('active',b.dataset.dir===form.direction));
+ toggleEntry2(false);renderEntrySelectors();renderStaticChips();updateInstrumentPriceUI()
+}
+function formatCurrentPriceInput(el){
+ if(!el||!el.value)return;
+ const value=num(el.value);
+ if(value)el.value=value.toFixed(instrumentSpec().digits)
+}
+
+const rules={
+ 'В.5':{methods:['СЕРЧ','Лимитка','И'],groups:{wolf:['Т4','Т6'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
+ 'В+И':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
+ 'ВС':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
+ 'ВвД':{methods:['СЕРЧ','Лимитка','И'],groups:{base:['Граница Д','Т4','Т6'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
+ 'Диапазон':{subtypes:['Накопление','Распределение'],methods:['Обычный','По сетке','И','К-3'],groups:{normal:['Граница Д','1.6','2.0'],grid:['Граница Д','1.6 Д','2.0 Д'],i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23'],k3:['1.6','2.4','2.6']}},
+ 'К-3':{methods:['К-3'],groups:{k3:['1.6','2.4','2.6']}},
+ 'Импульс':{methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}},
+ 'По сетке':{subtypes:['И','ВТ5','В+И'],methods:['И','СЕРЧ','Лимитка'],groups:{grid:['2.6','3.6','4.23']}},
+ 'Стата':{subtypes:['1.6-50-2.6','1.2-50-2.6','1.6-100-2.6'],methods:['И','К-3'],groups:{stata:['2.6']}},
+ 'Слабый':{subtypes:['от Т4','от Т5'],methods:['И'],groups:{i:['1.2','1.6','2.0','2.4','2.6','3.6','4.23']}}
+};
+function updateDay(){
+ const key=appDateKey();
+ if(state.dayKey!==key){
+  state.dayKey=key;
+  state.dayStartBalance=Math.round((Number(state.balance)||0)*100)/100;
+  return true
+ }
+ return false
+}
+function save(){
+ updateDay();
+ state.lastSavedAt=nowIso();
+ state.schemaVersion=APP_SCHEMA_VERSION;
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+ updateHeader();
+ updateStorageStatus()
+}
+function openTrades(){return state.trades.filter(t=>t.status==='open')}
+function parseBacktestDateKey(value){
+ const m=String(value||'').match(/^(\d{2})\.(\d{2})\.(\d{2}|\d{4})/);
+ if(!m)return '';
+ const year=m[3].length===2?'20'+m[3]:m[3];
+ const key=`${year}-${m[2]}-${m[1]}`;
+ const d=new Date(`${key}T00:00:00`);
+ return isNaN(d)||d.getFullYear()!=Number(year)||d.getMonth()+1!=Number(m[2])||d.getDate()!=Number(m[1])?'':key
+}
+function tradeRiskDateKey(t){
+ if(t&&t.mode==='Backtest'){
+  return parseBacktestDateKey(t.date)||''
+ }
+ return dateKeyInTimeZone((t&&t.createdAt)||(t&&t.closedAt)||new Date(),tradeTimeZone(t))
+}
+function activeRiskDateKey(){
+ if(form.mode==='Backtest'){
+  return parseBacktestDateKey($('#tradeDate').value.trim())||appDateKey()
+ }
+ return appDateKey()
+}
+function activeRiskMode(){return form.mode==='Backtest'?'Backtest':'Real'}
+function sameRiskMode(t,mode){
+ return mode==='Backtest'?t.mode==='Backtest':t.mode!=='Backtest'
+}
+function realizedLossForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
+ return state.trades.reduce((sum,t)=>{
+  if(!sameRiskMode(t,mode))return sum;
+  const tradeKey=tradeRiskDateKey(t);
+  return sum+(t.exits||[]).filter(e=>{
+   const eventKey=t.mode==='Backtest'?tradeKey:(e.at?dateKeyInTimeZone(e.at,tradeTimeZone(t)):tradeKey);
+   return eventKey===dayKey&&Number(e.pnl)<0
+  }).reduce((s,e)=>s+Math.abs(Number(e.pnl)),0)
+ },0)
+}
+function todaysRealizedLoss(){return realizedLossForDay(appDateKey(),'Real')}
+function closedPositivePnlForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
+ return state.trades
+  .filter(t=>{
+   if(!sameRiskMode(t,mode))return false;
+   const closeKey=t.mode==='Backtest'?tradeRiskDateKey(t):(t.closedAt?dateKeyInTimeZone(t.closedAt,tradeTimeZone(t)):'');
+   return closeKey===dayKey&&t.balanceApplied
+  })
+  .reduce((s,t)=>s+Math.max(0,Number(t.pnl||0)),0)
+}
+function todaysClosedPositivePnl(){return closedPositivePnlForDay(appDateKey(),'Real')}
+function occupiedRiskForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
+ return openTrades().filter(t=>{
+  if(mode==='Backtest'){
+   const openKey=tradeRiskDateKey(t);
+   return t.mode==='Backtest'&&openKey&&dayKey&&openKey<=dayKey
+  }
+  return t.mode!=='Backtest'
+ }).reduce((s,t)=>s+reservedRiskForTrade(t),0)
+}
+function backtestDayStartBalance(dayKey){
+ const current=Math.round(Number(state.balance||0)*100)/100;
+ if(!dayKey)return current;
+ const appliedFromSelectedDay=(state.trades||[])
+  .filter(t=>t.mode==='Backtest'&&t.balanceApplied&&t.status!=='not_triggered'&&tradeRiskDateKey(t)>=dayKey)
+  .reduce((sum,t)=>sum+Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0),0);
+ return Math.max(0,Math.round((current-appliedFromSelectedDay)*100)/100)
+}
+function dayRiskBase(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
+ // База дня растёт только на полностью закрытую положительную прибыль.
+ // Убытки вычитаются отдельно, открытая и защищённая стопом прибыль не учитываются.
+ if(mode==='Backtest'){
+  const base=backtestDayStartBalance(dayKey);
+  return Math.max(0,Math.round((base+closedPositivePnlForDay(dayKey,mode))*100)/100)
+ }
+ const storedBase=Number(state.dayStartBalance||0);
+ const closedProfit=closedPositivePnlForDay(dayKey,mode);
+ const storedComputed=Math.round((storedBase+closedProfit)*100)/100;
+ const balanceComputed=Math.round((Number(state.balance||0)+realizedLossForDay(dayKey,mode))*100)/100;
+ return Math.max(0,storedComputed,balanceComputed)
+}
+function rebaseBalanceEvents(){
+ state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
+ const total=state.balanceEvents.reduce((s,e)=>s+Number(e.amount||0),0);
+ let running=Math.round((Number(state.balance||0)-total)*100)/100;
+ state.balanceEvents.forEach(e=>{
+  e.balance_before=running;
+  running=Math.round((running+Number(e.amount||0))*100)/100;
+  e.balance_after=running
+ })
+}
+function addBalanceEvent(type,amount,meta={}){
+ updateDay();
+ const before=Number(state.balance||0);
+ const delta=Math.round(Number(amount||0)*100)/100;
+ const after=Math.round((before+delta)*100)/100;
+ state.balance=after;
+ if(['deposit','withdraw','manual_adjustment'].includes(type)){
+  state.dayStartBalance=Math.round((Number(state.dayStartBalance||0)+delta)*100)/100
+ }
+ state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
+ state.balanceEvents.push({
+  id:meta.id||'BE-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+  type,
+  amount:delta,
+  trade_id:meta.trade_id||'',
+  comment:meta.comment||'',
+  balance_before:before,
+  balance_after:after,
+  at:meta.at||nowIso()
+ });
+ return after
+}
+function removeTradeBalanceEvent(tradeId){
+ state.balanceEvents=(state.balanceEvents||[]).filter(e=>!(e.type==='trade_close'&&e.trade_id===tradeId));
+ rebaseBalanceEvents()
+}
+function occupiedRisk(){return occupiedRiskForDay(appDateKey(),'Real')}
+function dayLimit(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return dayRiskBase(dayKey,mode)*state.dayRiskPct/100}
+function dayRemaining(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return Math.max(0,dayLimit(dayKey,mode)-realizedLossForDay(dayKey,mode)-occupiedRiskForDay(dayKey,mode))}
+function tradeAllowed(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return Math.min(state.balance*state.riskPct/100,dayRemaining(dayKey,mode))}
+function updateHeader(){
+ updateDay();
+ const key=activeRiskDateKey();
+ $('#kBalance').textContent=money(state.balance);
+ $('#kRisk').textContent=money(state.balance*state.riskPct/100);
+ $('#kDay').textContent=money(dayRemaining(key))+' / '+money(dayLimit(key));
+ $('#kOpen').textContent=openTrades().length;
+}
+function setTheme(t){state.theme=t;document.documentElement.dataset.theme=t==='dark'?'dark':'';save()}
+$('#themeBtn').onclick=()=>setTheme(state.theme==='dark'?'light':'dark');
+
+function nav(to){
+ $$('.screen').forEach(x=>x.classList.toggle('active',x.dataset.screen===to));
+ $$('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.nav===to));
+ if(to==='open')renderOpen();
+ if(to==='done')renderDone();
+ if(to==='settings')renderSettings();
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+$$('#nav button').forEach(b=>b.onclick=()=>nav(b.dataset.nav));
+
+function chipButton(label,active,cb){
+ const b=document.createElement('button');b.type='button';b.textContent=label;b.classList.toggle('active',active);b.onclick=cb;return b
+}
+function renderStaticChips(){
+ const ots=['УрГ','УрПоИ','POC','Истор','МА200','Трендовая','V(D)','V(W)','V(M)','З.ПОКУП','З.ПРОДАЖ'];
+ const conf=['СЕРЧ','Лимитка','Объёмы','МакД','Крюк'];
+ $('#otChips').replaceChildren(...ots.map(v=>chipButton(v,form.ot.includes(v),()=>{form.ot=form.ot.includes(v)?form.ot.filter(x=>x!==v):[...form.ot,v];renderStaticChips();saveInstrumentDraft(activeInstrument)})));
+ $('#confirmChips').replaceChildren(...conf.map(v=>chipButton(v,form.conf.includes(v),()=>{form.conf=form.conf.includes(v)?form.conf.filter(x=>x!==v):[...form.conf,v];renderStaticChips();saveInstrumentDraft(activeInstrument)})));
+}
+function syncMethodString(){
+ form.method=form.methods.join(' + ');
+}
+function isImpulseEntry(){return form.methods.includes('И')}
+function isWolfStrategy(s=$('#strategy').value){return ['В.5','В+И','ВС','ВвД'].includes(s)}
+function isQuickDoubleEntry(){return form.methods.includes('СЕРЧ')&&form.methods.includes('Лимитка')}
+function isRangeGridEntry(){return $('#strategy').value==='Диапазон'&&form.methods.includes('По сетке')}
+function setSelectOptions(select,values,preferred){
+ const old=select.value;
+ select.replaceChildren(...values.map(v=>new Option(v,v)));
+ if(values.includes(preferred))select.value=preferred;
+ else if(values.includes(old))select.value=old;
+}
+function renderEntrySelectors(){
+ const s=$('#strategy').value;
+ const l1=$('#entryLabel1'),l2=$('#entryLabel2'),l3=$('#entryLabel3'),e1=$('#entryLevel1'),e2=$('#entryLevel2'),e3=$('#entryLevel3');
+ if(isRangeGridEntry()){
+  l1.textContent='Уровень сетки';l2.textContent='Уровень сетки';l3.textContent='Уровень сетки';
+  const levels=['38','14','-15'],selects=[e1,e2,e3],count=Number($('#entryCount').value||1),used=new Set();
+  selects.forEach((select,index)=>{
+   if(index>=count){setSelectOptions(select,levels,levels[index]);return}
+   const current=select.value;
+   const preferred=levels.includes(current)&&!used.has(current)?current:levels.find(level=>!used.has(level));
+   const available=levels.filter(level=>!used.has(level)||level===preferred);
+   setSelectOptions(select,available,preferred);
+   used.add(select.value);
+  });
+ }else if(isImpulseEntry()){
+  l1.textContent='Уровень входа';l2.textContent='Уровень входа';l3.textContent='Уровень входа';
+ setSelectOptions(e1,['50','23','-15','Ручной'],'50');
+ setSelectOptions(e2,['23','50','-15','Ручной'],'23');
+  setSelectOptions(e3,['-15','23','50','Ручной'],'-15');
+ }else if(form.methods.includes('К-3')){
+  l1.textContent='Уровень входа';l2.textContent='Уровень входа';
+  setSelectOptions(e1,['23','38','Ручной'],'23');
+  setSelectOptions(e2,['38','23','Ручной'],'38');
+  setSelectOptions(e3,['Ручной'],'Ручной');
+ }else if(form.methods.includes('СЕРЧ')||form.methods.includes('Лимитка')){
+  l1.textContent='Исполнение';l2.textContent='Исполнение';l3.textContent='Исполнение';
+  const vals=form.methods.filter(x=>x==='СЕРЧ'||x==='Лимитка');
+  setSelectOptions(e1,vals,vals.includes('СЕРЧ')?'СЕРЧ':vals[0]);
+  setSelectOptions(e2,vals,vals.includes('Лимитка')?'Лимитка':vals[0]);
+  setSelectOptions(e3,['Ручной'],'Ручной');
+ }else{
+  l1.textContent='Уровень / способ';l2.textContent='Уровень / способ';l3.textContent='Уровень / способ';
+  setSelectOptions(e1,['Ручной'],'Ручной');
+  setSelectOptions(e2,['Ручной'],'Ручной');
+  setSelectOptions(e3,['Ручной'],'Ручной');
+ }
+}
+function allowsCombinedQuickEntry(strategy,subtype){
+ return ['В.5','ВвД'].includes(strategy)||(strategy==='По сетке'&&subtype==='ВТ5');
+}
+function toggleMethod(method,available){
+ const s=$('#strategy').value;
+ if(method==='И'){
+  form.methods=['И'];
+ }else if(allowsCombinedQuickEntry(s,$('#subtype').value)){
+  form.methods=form.methods.filter(x=>x!=='И');
+  if(form.methods.includes(method)){
+   if(form.methods.length>1)form.methods=form.methods.filter(x=>x!==method);
+  }else{
+   form.methods.push(method);
+  }
+ }else{
+  form.methods=[method];
+ }
+ if(!form.methods.length)form.methods=[available[0]];
+ syncMethodString();
+ renderStrategy();
+ saveInstrumentDraft(activeInstrument);
+ calcRisk();
+}
+function renderStrategy(){
+ const s=$('#strategy').value,r=rules[s];
+ const sw=$('#subtypeWrap'),sel=$('#subtype');
+ const gw=$('#gridLevelWrap');
+ if(r.subtypes){
+  sw.classList.remove('hidden');
+  const old=sel.value;
+  sel.replaceChildren(...r.subtypes.map(v=>new Option(v,v)));
+  if(r.subtypes.includes(old))sel.value=old;
+ }else sw.classList.add('hidden');
+ gw.classList.toggle('hidden',s!=='По сетке');
+
+ let methods=[...r.methods];
+ if(s==='Слабый' && sel.value==='от Т5')methods=['И','К-3'];
+ if(s==='По сетке')methods=sel.value==='ВТ5'?['СЕРЧ','Лимитка']:['И'];
+
+ // Keep only valid methods for the selected strategy.
+ form.methods=form.methods.filter(x=>methods.includes(x));
+ if(!form.methods.length)form.methods=[methods[0]];
+
+ // For V.5, VvD, and Grid/VT5: SERCH and Limitka may be selected separately or together.
+ // Impulse is exclusive.
+ if(form.methods.includes('И'))form.methods=['И'];
+
+ syncMethodString();
+ $('#entryMethods').replaceChildren(...methods.map(v=>chipButton(v,form.methods.includes(v),()=>toggleMethod(v,methods))));
+
+ const entryCount=$('#entryCount');
+ const rangeGrid=isRangeGridEntry();
+ const twoAllowed=isImpulseEntry()||isQuickDoubleEntry();
+ entryCount.querySelector('option[value="3"]').hidden=!rangeGrid;
+ entryCount.querySelector('option[value="3"]').disabled=!rangeGrid;
+ entryCount.disabled=rangeGrid||(!twoAllowed&&!rangeGrid);
+ if(rangeGrid){
+  if(!['1','2','3'].includes(entryCount.value))entryCount.value='1';
+  entryCount.disabled=false;
+  toggleEntry2();
+ }
+ else if(!twoAllowed){entryCount.value='1';toggleEntry2()}
+ renderEntrySelectors();
+
+ const hint=$('#impulseStopHint');
+ if(isRangeGridEntry()){
+  hint.innerHTML='<b>Вход по сетке:</b> выбери 1, 2 или 3 уровня из 38 / 14 / -15. Стоп всегда за уровнем -38; точную цену стопа введи вручную.<br>Риск: 1 вход — 100%; 2 входа — 60% ближнему к стопу и 40% дальнему; 3 входа — 40% ближнему и по 30% остальным.';
+ }else if(isImpulseEntry()){
+  hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.<br>При двух входах риск распределяется автоматически: 60% на ближний к стопу вход и 40% на дальний.';
+ }else{
+  hint.textContent='Средняя цена считается взвешенно по объёмам. Для двух входов сумма долей риска должна быть 100%.';
+ }
+
+}
+
+$('#strategy').onchange=()=>{
+ form.targets=[];
+ const methods=rules[$('#strategy').value].methods;
+ form.methods=[methods[0]];
+ syncMethodString();
+ renderStrategy();
+ saveInstrumentDraft(activeInstrument);
+ calcRisk()
+}
+$('#subtype').onchange=()=>{form.targets=[];renderStrategy();saveInstrumentDraft(activeInstrument);calcRisk()}
+
+$$('#modeSeg button').forEach(b=>b.onclick=()=>{
+ form.mode=b.dataset.value;state.mode=form.mode;save();
+ $$('#modeSeg button').forEach(x=>x.classList.toggle('active',x===b));
+ $('#backtestDate').classList.toggle('hidden',form.mode!=='Backtest');
+ updateHeader();calcRisk();
+});
+$$('.direction button').forEach(b=>b.onclick=()=>{
+ form.direction=b.dataset.dir;$$('.direction button').forEach(x=>x.classList.toggle('active',x===b));saveInstrumentDraft(activeInstrument);calcRisk()
+});
+function toggleEntry2(resetShares=true){
+ const count=Number($('#entryCount').value||1);
+ const two=count>=2,three=count>=3;
+ $('#entry2').classList.toggle('hidden',!two);
+ $('#entry3').classList.toggle('hidden',!three);
+ if(resetShares){
+  $('#riskShare1').value=three?(isRangeGridEntry()?30:34):two?((isImpulseEntry()||isRangeGridEntry())?60:50):100;
+  $('#riskShare2').value=three?(isRangeGridEntry()?30:33):((isImpulseEntry()||isRangeGridEntry())?40:50);
+  $('#riskShare3').value=three?(isRangeGridEntry()?40:33):33;
+ }
+ calcRisk()
+}
+$('#entryCount').onchange=()=>{toggleEntry2();renderEntrySelectors();saveInstrumentDraft(activeInstrument);calcRisk()};
+
+function avgEntry(){
+ const count=Number($('#entryCount').value||1);
+ const entries=[1,2,3].filter(i=>i<=count).map(i=>({price:num($('#entryPrice'+i).value),volume:num($('#volume'+i).value)}));
+ const volume=entries.reduce((sum,e)=>sum+e.volume,0);
+ return volume?entries.reduce((sum,e)=>sum+e.price*e.volume,0)/volume:0
+}
+function syncAutomaticRiskShares(){
+ const count=Number($('#entryCount').value||1);
+ const inputs=[1,2,3].map(index=>$('#riskShare'+index));
+ inputs.forEach(input=>{input.readOnly=false});
+ if(isImpulseEntry()&&count===1){
+  inputs[0].value='100';
+  inputs[0].readOnly=true;
+  return;
+ }
+ if(isImpulseEntry()&&count===2){
+  const stop=num($('#initialStop').value);
+  const first=num($('#entryPrice1').value),second=num($('#entryPrice2').value);
+  const firstIsNear=!stop||!first||!second||Math.abs(first-stop)<=Math.abs(second-stop);
+  inputs[0].value=firstIsNear?'60':'40';
+  inputs[1].value=firstIsNear?'40':'60';
+  inputs[0].readOnly=true;
+  inputs[1].readOnly=true;
+  return;
+ }
+ if(!isRangeGridEntry())return;
+ if(count===1){
+  inputs[0].value='100';
+  inputs[0].readOnly=true;
+  return;
+ }
+ const stop=num($('#initialStop').value);
+ const entries=[1,2,3].filter(index=>index<=count).map(index=>({index,price:num($('#entryPrice'+index).value)}));
+ const hasPrices=stop&&entries.every(entry=>entry.price);
+ const ranked=hasPrices?entries.slice().sort((a,b)=>Math.abs(a.price-stop)-Math.abs(b.price-stop)||a.index-b.index):entries;
+ const shares=count===2
+  ? (hasPrices?{[ranked[0].index]:60,[ranked[1].index]:40}:{1:60,2:40})
+  : (hasPrices?{[ranked[0].index]:40,[ranked[1].index]:30,[ranked[2].index]:30}:{1:30,2:30,3:40});
+ entries.forEach(entry=>{inputs[entry.index-1].value=String(shares[entry.index]);inputs[entry.index-1].readOnly=true});
+}
+function maxForEntry(price,share){
+ const inst=$('#instrument').value,sp=specs[inst],stop=num($('#initialStop').value),allowed=tradeAllowed()*share/100;
+ return price&&stop&&Math.abs(price-stop)>0?floorStep(allowed/(Math.abs(price-stop)*sp.contract),sp.step):0
+}
+
+function roundedVolume(v){
+ return Math.max(.01,Math.round((Number(v)+1e-9)*100)/100)
+}
+function setVolumeValue(index,value,trigger=true){
+ const input=$('#volume'+index),range=$('#volumeRange'+index);
+ const max=Number(range.max)||.01;
+ const next=Math.min(max,roundedVolume(value));
+ input.value=next.toFixed(2);
+ range.value=next.toFixed(2);
+ if(trigger)calcRisk();
+}
+function configureVolumeControl(index,maxVolume){
+ const input=$('#volume'+index),range=$('#volumeRange'+index);
+ const minus=$('#volumeMinus'+index),plus=$('#volumePlus'+index);
+ const step=Number((specs[$('#instrument').value]&&specs[$('#instrument').value].step)||.01);
+ const digits=Math.max(2,String(step).includes('.')?String(step).split('.')[1].length:0);
+ const usableMax=maxVolume>=step?Math.floor((maxVolume+1e-9)/step)*step:step;
+ input.min=step;input.step=step;
+ range.min=step;range.step=step;range.max=usableMax.toFixed(digits);
+ range.disabled=maxVolume<step;
+ minus.disabled=num(input.value)<=step+.0000001;
+ plus.disabled=maxVolume<step||num(input.value)>=usableMax-.0000001;
+ $('#volumeMin'+index).disabled=maxVolume<step;
+ $('#volumeHalf'+index).disabled=maxVolume<step;
+ $('#volumeMax'+index).disabled=maxVolume<step;
+ if(num(input.value)<=usableMax+.0001)range.value=Math.max(step,num(input.value)).toFixed(digits);
+ else range.value=usableMax.toFixed(digits);
+}
+function calcRisk(){
+ syncAutomaticRiskShares();
+ const inst=$('#instrument').value,sp=specs[inst],stop=num($('#initialStop').value),avg=avgEntry();
+ const count=Number($('#entryCount').value||1);
+ const entries=[1,2,3].filter(i=>i<=count).map(i=>({index:i,price:num($('#entryPrice'+i).value),volume:num($('#volume'+i).value),share:num($('#riskShare'+i).value)}));
+ const total=entries.reduce((sum,e)=>sum+e.volume,0);
+ const maxes=entries.map(e=>maxForEntry(e.price,e.share));
+ const actual=entries.reduce((sum,e)=>sum+Math.abs(e.price-stop)*sp.contract*e.volume,0);
+ const minRisk=entries.length?Math.abs(entries[0].price-stop)*sp.contract*sp.step:0;
+ const allowed=tradeAllowed();
+ const maxVol=maxes.reduce((sum,v)=>sum+v,0);
+ const shares=entries.reduce((sum,e)=>sum+e.share,0);
+ $('#rAllowed').textContent=money(allowed);$('#rMin').textContent=money(minRisk);$('#rActual').textContent=money(actual);
+ $('#rMaxVol').textContent=maxVol.toFixed(2);$('#rAvg').textContent=avg?avg.toFixed(sp.digits):'—';$('#rShares').textContent=shares+'%';
+ const minimumRiskOverLimit=entries.map((e,index)=>{
+  const minimum=Math.abs(e.price-stop)*sp.contract*sp.step;
+  return Boolean(e.price&&stop&&minimum>allowed*e.share/100+.001);
+ });
+ [1,2,3].forEach(i=>{
+  const entry=entries[i-1],max=maxes[i-1]||0,hint=$('#volumeHint'+i),hintText=hint.querySelector('span');
+  hint.classList.remove('bad');
+  if(!entry){hintText.textContent='Максимум: —'}
+  else if(minimumRiskOverLimit[i-1]){
+   hint.classList.add('bad');
+   hintText.textContent='Риск превышен: даже 0.01 больше доступного риска.';
+  }else if(entry.volume>max+.0001){
+   hint.classList.add('bad');
+   hintText.textContent=`Риск превышен: выбрано ${entry.volume.toFixed(2)}, допустимо ${max.toFixed(2)} контр.`;
+  }else hintText.textContent=max>=sp.step?`Максимум: ${max.toFixed(2)} контр.`:'Максимум: —';
+  configureVolumeControl(i,max);
+ });
+ const prices=entries.map(e=>e.price).filter(Boolean);
+ const volumeOverMax=entries.some((e,i)=>e.volume>maxes[i]+.0001);
+ const has=avg&&stop;let cls='warn',msg='Введите цену входа и стоп.';
+ if(avg&&stop&&shares!==100){cls='bad';msg='Сумма долей риска должна быть 100%.'}
+ else if(avg&&stop&&minimumRiskOverLimit.some(Boolean)){const index=minimumRiskOverLimit.findIndex(Boolean);cls='bad';msg=`Вход ${index+1}: даже минимальный объём 0.01 превышает его доступную долю риска.`}
+ else if(avg&&stop&&volumeOverMax){const index=entries.findIndex((e,i)=>e.volume>maxes[i]+.0001);cls='bad';msg=`Вход ${index+1}: риск превышен. Выбрано ${entries[index].volume.toFixed(2)}, допустимо ${maxes[index].toFixed(2)} контр.`}
+ else if(has && total<sp.step){cls='bad';msg='Объём меньше минимального 0.01.'}
+ else if(has && minRisk>allowed){cls='bad';msg='Даже минимальный объём 0.01 превышает доступный риск.'}
+ else if(has && actual>allowed+.001){cls='bad';msg='Риск введённого объёма превышает допустимый. Сохранение заблокировано.'}
+ else if(avg&&stop&&!initialStopDirectionOk(avg,stop,prices)){cls='bad';msg=initialStopDirectionMessage(avg,stop,prices)}
+ else if(has){cls='good';msg='Риск проверен. Сделку можно открыть.'}
+ $('#riskAlert').className='alert '+cls;$('#riskAlert').textContent=msg;
+ return {ok:has&&initialStopDirectionOk(avg,stop,prices)&&shares===100&&total>=sp.step&&!volumeOverMax&&!minimumRiskOverLimit.some(Boolean)&&minRisk<=allowed+.001&&actual<=allowed+.001,actual,avg,total,maxVol,max1:maxes[0]||0,max2:maxes[1]||0,max3:maxes[2]||0}
+}
+['initialStop','entryPrice1','entryPrice2','entryPrice3','riskShare1','riskShare2','riskShare3'].forEach(id=>$('#'+id).addEventListener('input',()=>{
+ calcRisk();
+ saveInstrumentDraft(activeInstrument)
+}));
+['initialStop','entryPrice1','entryPrice2','entryPrice3'].forEach(id=>{
+ $('#'+id).addEventListener('blur',()=>{
+  formatCurrentPriceInput($('#'+id));
+  saveInstrumentDraft(activeInstrument);
+  calcRisk()
+ })
+});
+['1','2','3'].forEach(index=>{
+ const input=$('#volume'+index),range=$('#volumeRange'+index);
+ const currentStep=()=>Number((specs[$('#instrument').value]&&specs[$('#instrument').value].step)||.01);
+ const currentMax=()=>Number(range.max)||currentStep();
+ const digits=()=>Math.max(2,String(currentStep()).includes('.')?String(currentStep()).split('.')[1].length:0);
+ const setEntryVolume=(value,mode='round')=>{
+  const step=currentStep(),max=currentMax(),units=Number(value)/step;
+  const rounded=mode==='ceil'?Math.ceil(units-1e-9):Math.round(units);
+  const next=Math.min(max,Math.max(step,rounded*step));
+  input.value=next.toFixed(digits());range.value=next.toFixed(digits());calcRisk()
+ };
+ input.addEventListener('focus',()=>input.select());
+ input.addEventListener('input',()=>{
+  if(num(input.value)>0)range.value=Math.max(currentStep(),num(input.value)).toFixed(digits());
+  calcRisk();saveInstrumentDraft(activeInstrument)
+ });
+ input.addEventListener('blur',()=>{
+  if(!input.value||num(input.value)<currentStep())input.value=currentStep().toFixed(digits());
+  setEntryVolume(input.value)
+ });
+ range.addEventListener('input',()=>setEntryVolume(range.value));
+ $('#volumeMinus'+index).onclick=()=>setEntryVolume(num(input.value)-currentStep());
+ $('#volumePlus'+index).onclick=()=>setEntryVolume(num(input.value)+currentStep());
+ $('#volumeMin'+index).onclick=()=>setEntryVolume(currentStep());
+ $('#volumeHalf'+index).onclick=()=>setEntryVolume(currentMax()/2,'ceil');
+ $('#volumeMax'+index).onclick=()=>setEntryVolume(currentMax());
+});
+let activeInstrument=$('#instrument').value;
+$('#instrument').onchange=()=>{
+ saveInstrumentDraft(activeInstrument);
+ activeInstrument=$('#instrument').value;
+ loadInstrumentDraft(activeInstrument);
+ calcRisk()
+};
+['tfSetup','tfEntry','gridLevel','entryLevel1','entryLevel2','entryLevel3','riskShare1','riskShare2','riskShare3','entryComment','isReentry','prevTradeId'].forEach(id=>{
+ const el=$('#'+id);
+ if(!el)return;
+ const event=el.tagName==='TEXTAREA'||el.tagName==='INPUT'?'input':'change';
+ el.addEventListener(event,()=>{
+  if(id.startsWith('entryLevel')&&isRangeGridEntry())renderEntrySelectors();
+  saveInstrumentDraft(activeInstrument);calcRisk()
+ })
+});
+
+function resetForm(){
+ $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';
+ $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
+ $('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';$('#volumeRange3').value='0.01';
+ $('#entryCount').value='1';toggleEntry2();
+ form.targets=[];form.ot=[];form.conf=[];$('#entryComment').value='';renderStaticChips();updateInstrumentPriceUI();calcRisk()
+}
+function currentEntryPrices(){
+ const count=Number($('#entryCount').value||1);
+ return [1,2,3].filter(index=>index<=count).map(index=>num($('#entryPrice'+index).value)).filter(x=>x>0)
+}
+function initialStopDirectionOk(avg,stop,prices=currentEntryPrices()){
+ if(!avg||!stop||!prices.length)return true;
+ return form.direction==='Long'
+  ? prices.every(price=>stop<price)
+  : prices.every(price=>stop>price)
+}
+function initialStopDirectionMessage(avg,stop,prices=currentEntryPrices()){
+ const d=specs[$('#instrument').value].digits;
+ const edge=form.direction==='Long'?Math.min(...prices):Math.max(...prices);
+ return form.direction==='Long'
+  ? `Для Long стартовый стоп должен быть ниже каждого входа. Ближайший вход ${edge.toFixed(d)}, стоп ${stop.toFixed(d)}.`
+  : `Для Short стартовый стоп должен быть выше каждого входа. Ближайший вход ${edge.toFixed(d)}, стоп ${stop.toFixed(d)}.`
+}
+function validBacktestDateTime(){
+ if(form.mode!=='Backtest')return true;
+ const date=$('#tradeDate').value.trim(),time=$('#tradeTime').value.trim();
+ const dateOk=/^\d{2}\.\d{2}\.(\d{2}|\d{4})$/.test(date);
+ const timeOk=/^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+ if(!dateOk||!timeOk){
+  alert('Для бэктеста укажи дату в формате ДД.ММ.ГГ и время ЧЧ:ММ.');
+  return false
+ }
+ return true
+}
+function maskBacktestDate(value){
+ const digits=String(value||'').replace(/\D/g,'').slice(0,6);
+ if(digits.length<=2)return digits;
+ if(digits.length<=4)return `${digits.slice(0,2)}.${digits.slice(2)}`;
+ return `${digits.slice(0,2)}.${digits.slice(2,4)}.${digits.slice(4)}`
+}
+function maskBacktestTime(value){
+ const digits=String(value||'').replace(/\D/g,'').slice(0,4);
+ if(digits.length<=2)return digits;
+ return `${digits.slice(0,2)}:${digits.slice(2)}`
+}
+function applyBacktestDateTimeMasks(){
+ const date=$('#tradeDate'),time=$('#tradeTime');
+ const recalc=()=>{updateHeader();calcRisk()};
+ date.addEventListener('input',()=>{date.value=maskBacktestDate(date.value);recalc()});
+ date.addEventListener('blur',()=>{date.value=maskBacktestDate(date.value);recalc()});
+ time.addEventListener('input',()=>{time.value=maskBacktestTime(time.value);recalc()});
+ time.addEventListener('blur',()=>{time.value=maskBacktestTime(time.value);recalc()})
+}
+$('#saveTrade').onclick=()=>{
+ const r=calcRisk();if(!r.ok)return alert('Сделка не проходит проверку риска или обязательных полей.');
+ if(!validBacktestDateTime())return;
+ if(isRangeGridEntry()){
+  const count=Number($('#entryCount').value||1);
+  const levels=[1,2,3].filter(index=>index<=count).map(index=>$('#entryLevel'+index).value);
+  if(new Set(levels).size!==levels.length)return alert('Для входов по сетке выбери разные уровни: 38, 14 и -15.');
+ }
+ if($('#entryCount').value==='2'&&isQuickDoubleEntry()&&$('#entryLevel1').value===$('#entryLevel2').value){
+  return alert('При двух исполнениях СЕРЧ + Лимитка вход 1 и вход 2 должны быть разными.');
+ }
+ const startStop=num($('#initialStop').value);
+ if(!initialStopDirectionOk(r.avg,startStop,currentEntryPrices()))return alert(initialStopDirectionMessage(r.avg,startStop,currentEntryPrices()));
+ const t={
+  id:uid(),app_version:APP_VERSION,status:'open',mode:form.mode,timezone:MOSCOW_TIME_ZONE,date:form.mode==='Real'?nowIso():$('#tradeDate').value+' '+$('#tradeTime').value,
+  createdAt:nowIso(),updatedAt:nowIso(),instrument:$('#instrument').value,direction:form.direction,tfSetup:$('#tfSetup').value,tfEntry:$('#tfEntry').value,
+  strategy:$('#strategy').value,subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:'',method:form.method,methods:[...form.methods],
+  initialStop:num($('#initialStop').value),currentStop:num($('#initialStop').value),
+  entries:[
+   {level:$('#entryLevel1').value,execution:$('#entryLevel1').value,price:num($('#entryPrice1').value),riskShare:num($('#riskShare1').value),volume:num($('#volume1').value),maxAllowedVolume:r.max1,executed:true,executedAt:nowIso()}
+  ],
+  targets:[],availableTargets:availableTargetsForTrade({strategy:$('#strategy').value,method:form.method,methods:[...form.methods],subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:''}),
+  ot:[...form.ot],confirmations:[...form.conf],comment:$('#entryComment').value,
+  plannedRisk:r.actual,initialRisk:Math.abs(num($('#entryPrice1').value)-startStop)*specs[$('#instrument').value].contract*num($('#volume1').value),currentRisk:Math.abs(num($('#entryPrice1').value)-startStop)*specs[$('#instrument').value].contract*num($('#volume1').value),avgPrice:num($('#entryPrice1').value),totalVolume:num($('#volume1').value),remainingVolume:num($('#volume1').value),exits:[],stops:[],
+  violations:[],isReentry:$('#isReentry').value,previousTradeId:$('#prevTradeId').value,
+  impulseReached23:'',impulseReachedMinus15:'',impulseReachedComment:''
+ };
+ const count=Number($('#entryCount').value||1);
+ for(let index=2;index<=count;index++){
+  t.entries.push({
+   level:$('#entryLevel'+index).value,
+   execution:$('#entryLevel'+index).value,
+   price:num($('#entryPrice'+index).value),
+   riskShare:num($('#riskShare'+index).value),
+   volume:num($('#volume'+index).value),
+   maxAllowedVolume:r['max'+index],
+   executed:'pending'
+  });
+ }
+ t.priceDigits=instrumentSpec(t.instrument).digits;
+ state.trades.push(t);
+ if(state.instrumentDrafts)delete state.instrumentDrafts[t.instrument];
+ save();resetForm();nav('open')
+};
+
+
+function availableTargetsForTrade(t){
+ const strategy=t.strategy||'';
+ const methods=Array.isArray(t.methods)?t.methods:String(t.method||'').split(' + ').filter(Boolean);
+ const impulse=methods.includes('И');
+ const k3=methods.includes('К-3');
+ const out=[];
+ const add=(group,labels)=>labels.forEach(label=>{
+  if(!out.some(x=>x.group===group&&x.label===label))out.push({group,label})
+ });
+
+ if(['В.5','В+И','ВС','ВвД'].includes(strategy)){
+  add('Цели Вульфа',['Т4','Т6']);
+  if(strategy==='ВвД')add('Доп. цель ВвД',['Граница Д']);
+  if(impulse)add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
+ }else if(strategy==='Диапазон'){
+  if(methods.includes('По сетке'))add('Цели диапазона',['Граница Д','1.6 Д','2.0 Д']);
+  else if(k3)add('Цели К-3',['1.6','2.4','2.6']);
+  else if(impulse)add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
+  else add('Цели диапазона',['Граница Д','1.6','2.0']);
+ }else if(strategy==='К-3'){
+  add('Цели К-3',['1.6','2.4','2.6']);
+ }else if(strategy==='По сетке'){
+  const target=gridTargetForLevel(t.gridLevel);
+  if(target)add('Цели сетки',[target]);
+ }else if(strategy==='Импульс'){
+  add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
+ }else if(strategy==='Стата'){
+  add('Цели Стата',['2.6']);
+ }else if(strategy==='Слабый'){
+  if(k3)add('Цели К-3',['1.6','2.4','2.6']);
+  else add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
+ }
+ return out;
+}
+function gridTargetForLevel(level){
+ return {'1.6':'2.6','2.6':'3.6','3.6':'4.23'}[String(level||'')]||'';
+}
+function gridStrategyLabel(t){
+ if(t.strategy!=='По сетке'||!t.gridLevel)return '';
+ const target=gridTargetForLevel(t.gridLevel);
+ return ` · от ${t.gridLevel}${target?` → ${target}`:''}`;
+}
+function targetListText(t){
+ const list=(t.availableTargets&&t.availableTargets.length?t.availableTargets:availableTargetsForTrade(t));
+ return list.map(x=>x.label).join(', ')||'—';
+}
+function formatTradeDate(t){
+ const raw=t.mode==='Backtest'&&t.date?t.date:(t.createdAt||t.closedAt||'');
+ if(!raw)return '—';
+ if(t.mode==='Backtest')return raw;
+ const d=new Date(raw);
+ return isNaN(d)?raw:formatAppDateTime(d,tradeTimeZone(t));
+}
+function formatEventDateTime(value,t){
+ if(!value)return '';
+ const raw=String(value);
+ if(/^\d{2}\.\d{2}\.(\d{2}|\d{4})(\s+([01]\d|2[0-3]):[0-5]\d)?$/.test(raw))return raw;
+ return formatAppDateTime(raw,tradeTimeZone(t))
+}
+function realizedPnl(t){
+ return (t.exits||[]).reduce((s,e)=>s+Number(e.pnl||0),0);
+}
+function reachedTargets(t){
+ const vals=[...new Set((t.exits||[]).map(e=>e.label||e.reason).filter(Boolean))];
+ return vals.length?vals.join(', '):'—';
+}
+function stopRiskValue(t,stopPrice){
+ const sp=specs[t.instrument];
+ const remaining=Number(t.remainingVolume||0);
+ if(!sp||!remaining)return 0;
+ const avg=Number(t.avgPrice||0),stop=Number(stopPrice||0);
+ const protectedPnl=t.direction==='Long'
+  ? (stop-avg)*sp.contract*remaining
+  : (avg-stop)*sp.contract*remaining;
+ // protectedPnl > 0 means stop already locks profit. Store as negative risk.
+ return protectedPnl>=0 ? -protectedPnl : Math.abs(protectedPnl);
+}
+function riskStatusLabel(t){
+ const v=Number(t.currentRisk||0);
+ if(v<0)return 'Зафиксировано стопом';
+ return 'Текущий риск';
+}
+function tradeCard(t,kind='open'){
+ const c=document.createElement('div');c.className='card trade';
+ c.innerHTML=`<div class="trade-head"><div><div class="trade-title">${t.instrument} · ${t.direction}</div><div class="mini-note">${t.strategy}${t.subtype?' / '+t.subtype:''}${gridStrategyLabel(t)} · ${t.method} · ${t.id}</div></div><span class="badge">${t.mode}</span></div>
+ <div class="mini-note" style="margin-top:8px"><b>Дата сделки:</b> ${formatTradeDate(t)}</div>
+ <div class="mini-note" style="margin-top:6px"><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}</div>
+ <div class="mini-note" style="margin-top:3px"><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}</div>
+ ${t.status==='not_triggered'?'<div class="mini-note" style="margin-top:6px"><b>Вход не состоялся:</b> цена не дошла. PnL, R и статистика сделок не учитываются.</div>':''}
+ ${pendingEntries(t).length?`<div class="mini-note" style="margin-top:3px"><b>Ожидают цены:</b> ${pendingEntries(t).length}</div>`:''}
+ <div class="trade-grid">
+ <div class="metric"><span>Средняя</span><b>${t.avgPrice?.toFixed(specs[t.instrument].digits)||'—'}</b></div>
+ <div class="metric"><span>Стоп</span><b>${t.currentStop?.toFixed(specs[t.instrument].digits)||'—'}</b></div>
+ <div class="metric"><span>Остаток</span><b>${Number(t.remainingVolume||0).toFixed(2)}</b></div>
+ <div class="metric"><span>${riskStatusLabel(t)}</span><b>${riskText(t.currentRisk)}</b></div>
+ <div class="metric"><span>Риск в резерве</span><b>${money(reservedRiskForTrade(t))}</b></div>
+ <div class="metric"><span>Прибыль</span><b>${money(realizedPnl(t))}</b></div>
+ <div class="metric"><span>Фиксация</span><b>${reachedTargets(t)}</b></div>
+ <div class="metric"><span>Цена достигла</span><b>${priceReachedLabel(t)}</b></div>
+ <div class="metric"><span>R итог</span><b>${t.rResult==null?'—':t.rResult.toFixed(2)+'R'}</b></div>
+ </div>`;
+ const a=document.createElement('div');a.className='actions';
+ if(kind==='open'){
+  const b1=document.createElement('button');b1.className='secondary';b1.textContent='Перенести стоп';b1.onclick=()=>showStop(t.id);
+  const b2=document.createElement('button');b2.className='secondary';b2.textContent='Записать выход';b2.onclick=()=>showClose(t.id);
+  const b3=document.createElement('button');b3.className='secondary wide';b3.textContent='Журнал сделки';b3.onclick=()=>showDetails(t.id);
+  a.append(b1,b2,b3);
+ }else if(kind==='pending'){
+  const b=document.createElement('button');b.className='primary wide';b.textContent='Отметить максимальную цель';b.onclick=()=>showFinalize(t.id);a.append(b)
+ }else{
+  const b=document.createElement('button');b.className='secondary wide';b.textContent='Показать детали';b.onclick=()=>showDetails(t.id);a.append(b)
+ }
+ c.append(a);return c
+}
+function renderOpen(){
+ const list=$('#openList'),ts=openTrades();$('#openCountLabel').textContent=ts.length+' сделок';list.replaceChildren(...(ts.length?ts.map(t=>tradeCard(t)):[Object.assign(document.createElement('div'),{className:'card empty',textContent:'Открытых сделок нет.'})]))
+}
+function renderDone(){
+ const pending=state.trades.filter(t=>t.status==='pending'),hist=state.trades.filter(t=>t.status==='done'||t.status==='not_triggered').slice().reverse();
+ $('#pendingList').replaceChildren(...(pending.length?pending.map(t=>tradeCard(t,'pending')):[Object.assign(document.createElement('div'),{className:'card empty',textContent:'Нет сделок, ожидающих завершения.'})]));
+ $('#historyList').replaceChildren(...(hist.length?hist.map(t=>tradeCard(t,'history')):[Object.assign(document.createElement('div'),{className:'card empty',textContent:'История пока пустая.'})]));
+ $('#pendingList').classList.toggle('hidden',form.doneView!=='pending');$('#historyList').classList.toggle('hidden',form.doneView!=='history')
+}
+$$('#doneSeg button').forEach(b=>b.onclick=()=>{form.doneView=b.dataset.done;$$('#doneSeg button').forEach(x=>x.classList.toggle('active',x===b));renderDone()});
+
+function modal(title,html){$('#modalTitle').textContent=title;$('#modalBody').innerHTML=html;$('#tradeModal').classList.add('show')}
+$('[data-close]').onclick=()=>$('#tradeModal').classList.remove('show');
+$('#tradeModal').onclick=e=>{if(e.target===$('#tradeModal'))$('#tradeModal').classList.remove('show')}
+function getTrade(id){return state.trades.find(t=>t.id===id)}
+function touchTrade(t){if(t)t.updatedAt=nowIso()}
+function showStop(id){
+ const t=getTrade(id),d=specs[t.instrument].digits;
+ const entryButtons=(t.entries||[]).map((e,i)=>entryStatus(e)==='executed'?`<button type="button" data-stop-entry="${i}">На вход ${i+1}</button>`:'').join('');
+ modal('Перенос стопа',`<div class="field price-field stop-price"><label>Новая цена стопа · ${t.direction}</label><input id="mStop" inputmode="decimal" value="${t.currentStop.toFixed(d)}"></div>
+ <div class="chips"><button type="button" id="mTrueBE">Точный БУ · средняя</button>${entryButtons}</div>
+ <div id="mStopPreview" class="alert warn">Выбери цену входа 1 или входа 2, либо введи стоп вручную.</div>
+ <div class="mini-note" style="margin:10px 0">Если стоп на цене входа — риск 0. Если стоп лучше средней цены, приложение покажет уже зафиксированную прибыль по оставшемуся объёму. Возвращать стоп назад нельзя.</div>
+ <button class="primary" id="mSaveStop">Сохранить стоп</button>`);
+ function updateStopPreview(){
+  const n=num($('#mStop').value);
+  const val=stopRiskValue(t,n);
+  const el=$('#mStopPreview');
+  if(!n){el.className='alert warn';el.textContent='Введите новый стоп.';return}
+  if(val<0){el.className='alert good';el.textContent=`Стоп фиксирует прибыль: +${money(Math.abs(val))}`;}
+  else if(val===0){el.className='alert good';el.textContent='Стоп в безубытке: риск 0.';}
+  else {el.className='alert warn';el.textContent=`Остаточный риск после переноса: ${money(val)}`;}
+ }
+ $('#mTrueBE').onclick=()=>{
+  $('#mStop').value=Number(t.avgPrice).toFixed(d);
+  updateStopPreview();
+ };
+ $$('[data-stop-entry]').forEach(b=>b.onclick=()=>{
+  const e=t.entries[Number(b.dataset.stopEntry)];
+  $('#mStop').value=Number(e.price).toFixed(d);
+  updateStopPreview();
+ });
+ $('#mStop').oninput=updateStopPreview;
+ updateStopPreview();
+ $('#mSaveStop').onclick=()=>{
+  const n=num($('#mStop').value);
+  if(!n||n<=0)return alert('Введите корректную цену стопа.');
+  if(Math.abs(n-Number(t.currentStop))<Math.pow(10,-d)/2)return alert('Новый стоп совпадает с текущим.');
+  const bad=t.direction==='Long'?n<t.currentStop:n>t.currentStop;
+  if(bad)return alert('Возврат стопа назад запрещён.');
+  const oldStop=t.currentStop;
+  t.currentStop=n;
+  const sourceIndex=(t.entries||[]).findIndex(e=>entryStatus(e)==='executed'&&Math.abs(Number(e.price)-n)<1e-9)+1;
+  const exactBE=Math.abs(Number(t.avgPrice)-n)<Math.pow(10,-d)/2;
+  t.currentRisk=stopRiskValue(t,n);
+  t.stops.push({oldStop,price:n,at:nowIso(),source:sourceIndex,sourceLabel:exactBE?'Точный БУ по средней':sourceIndex?`Стоп на вход ${sourceIndex}`:'Ручной перенос',riskAfter:t.currentRisk,lockedProfit:t.currentRisk<0?Math.abs(t.currentRisk):0});
+  cancelPendingEntries(t,'снят после переноса стопа');
+  touchTrade(t);
+  save();$('#tradeModal').classList.remove('show');renderOpen()
+ }
+}
+function autoFinalizeProtectiveExit(t,reason){
+ t.autoFinalizedReason=reason||'Стоп';
+ t.priceReachedTargets=[];
+ t.priceReachedByGroup={};
+ t.maxTargets={};
+ t.maxTarget='—';
+ t.reachedT4=false;
+ t.reachedT6=false;
+ if(t.strategy==='Слабый'&&t.subtype==='от Т4'){
+  t.status='pending';
+  t.finalizedAt=null;
+  t.needsT5Review=true;
+ }else{
+  t.status='done';
+  t.finalizedAt=t.closedAt||nowIso();
+  t.needsT5Review=false;
+ }
+}
+function showClose(id){
+ const t=getTrade(id),d=specs[t.instrument].digits;
+ const plans=(t.availableTargets&&t.availableTargets.length?t.availableTargets:availableTargetsForTrade(t));
+ const options=['<option value="">Выберите цель / событие</option>',
+  ...plans.map((x,i)=>`<option value="${i}">${x.group}: ${x.label}</option>`),
+  '<option value="manual">Ручной выход</option>',
+  '<option value="stop">Стоп</option>',
+  '<option value="be">Безубыток</option>'
+ ].join('');
+ const backtestExitFields=t.mode==='Backtest'?`<div id="mTakeDateWrap" class="hidden">
+ <div class="row" style="margin-top:10px">
+  <div class="field"><label>Дата тейка · необязательно</label><input id="mExitDate" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="16.07.26"></div>
+  <div class="field"><label>Время тейка · необязательно</label><input id="mExitTime" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="14:28"></div>
+ </div>
+ <div class="mini-note" style="margin-top:6px">Для Backtest можно указать историческое время тейка. Для стопа, БУ и ручного выхода дата тейка не нужна.</div>
+ </div>`:'';
+ modal('Записать выход',`<div class="mini-note" style="margin-bottom:10px">Выбери событие, фактическую цену и объём. При выборе «Стоп» приложение подставит текущую цену стопа, но её можно исправить вручную с учётом проскальзывания.</div>
+ <div class="field"><label>Цель / событие</label><select id="mTargetSelect">${options}</select></div>
+ <div class="row">
+  <div class="field price-field entry-price"><label>Фактическая цена фиксации</label><input id="mExitPrice" inputmode="decimal" value="${Number(t.avgPrice).toFixed(d)}" placeholder="точная цена"></div>
+  <div class="field"><label>Закрыто контрактов</label>
+<div class="exit-volume-box">
+<input id="mExitAmount" type="number" inputmode="decimal" min="0.01" max="${t.remainingVolume.toFixed(2)}" step="0.01" value="${t.remainingVolume.toFixed(2)}">
+<div class="volume-stepper">
+<button type="button" id="mExitMinus" aria-label="Уменьшить на один контракт">−</button>
+<input class="volume-range" id="mExitRange" type="range" min="0.01" max="${Math.max(.01,t.remainingVolume).toFixed(2)}" step="0.01" value="${Math.max(.01,t.remainingVolume).toFixed(2)}">
+<button type="button" id="mExitPlus" aria-label="Увеличить на один контракт">+</button>
+</div>
+<div class="exit-volume-value" id="mExitVolumeText">Закрываем: ${t.remainingVolume.toFixed(2)} контр.</div>
+<div class="volume-actions">
+<button type="button" id="qOne">0.01</button>
+<button type="button" id="qHalf">50% позиции</button>
+<button type="button" id="qAll" class="primary-action">100% / весь остаток</button>
+</div>
+<div class="step-note">Можно выбрать кнопкой, шкалой или ввести количество вручную. Шаг 0.01.</div>
+</div>
+</div>
+ </div>
+ <div class="chips" id="mPriceChips"></div>
+ <div id="mExitPriceSource" class="mini-note" style="margin-top:6px">По умолчанию подставлена средняя цена входа.</div>
+ ${backtestExitFields}
+ <div class="field" style="margin-top:10px"><label>Комментарий</label><textarea id="mExitComment" placeholder="необязательно"></textarea></div>
+ <div id="mExitPreview" class="alert warn">Выбери цель и введи цену выхода.</div>
+ <button class="primary" id="mSaveExit">Записать выход</button>`);
+ const instrumentStep=Number((specs[t.instrument]&&specs[t.instrument].step)||.01);
+ const instrumentDigits=Math.max(2,String(instrumentStep).includes('.')?String(instrumentStep).split('.')[1].length:0);
+ $('#mExitAmount').min=instrumentStep;
+ $('#mExitAmount').step=instrumentStep;
+ $('#mExitAmount').max=t.remainingVolume;
+ $('#mExitRange').min=instrumentStep;
+ $('#mExitRange').step=instrumentStep;
+ $('#mExitRange').max=Math.max(instrumentStep,t.remainingVolume);
+ const priceChips=[];
+ priceChips.push({label:'Стоп',price:t.currentStop,source:'Текущая цена стопа'});
+ priceChips.push({label:'Средняя',price:t.avgPrice,source:'Средняя цена входа'});
+ (t.entries||[]).forEach((e,i)=>priceChips.push({label:`Вход ${i+1}`,price:e.price,source:`Цена входа ${i+1}`}));
+ $('#mPriceChips').replaceChildren(...priceChips.map(x=>chipButton(x.label,false,()=>{
+ $('#mExitPrice').value=Number(x.price).toFixed(d);
+ $('#mExitPriceSource').textContent=`Подставлено: ${x.source} — ${Number(x.price).toFixed(d)}.`;
+  preview()
+ })));
+ if(t.mode==='Backtest'){
+  $('#mExitDate').addEventListener('input',()=>{$('#mExitDate').value=maskBacktestDate($('#mExitDate').value)});
+  $('#mExitDate').addEventListener('blur',()=>{$('#mExitDate').value=maskBacktestDate($('#mExitDate').value)});
+ $('#mExitTime').addEventListener('input',()=>{$('#mExitTime').value=maskBacktestTime($('#mExitTime').value)});
+ $('#mExitTime').addEventListener('blur',()=>{$('#mExitTime').value=maskBacktestTime($('#mExitTime').value)})
+ }
+ function isTakeSelection(){
+  const sel=$('#mTargetSelect').value;
+  return sel!==''&&!isNaN(Number(sel))
+ }
+ function updateTakeDateVisibility(){
+  if(t.mode!=='Backtest'||!$('#mTakeDateWrap'))return;
+  const show=isTakeSelection();
+  $('#mTakeDateWrap').classList.toggle('hidden',!show);
+  if(!show){
+   $('#mExitDate').value='';
+   $('#mExitTime').value=''
+  }
+ }
+
+ function preview(){
+  const p=num($('#mExitPrice').value),v=num($('#mExitAmount').value),sel=$('#mTargetSelect').value;
+  const el=$('#mExitPreview');
+  if(!sel||!p||v<=0){el.className='alert warn';el.textContent='Выбери цель, введи цену и количество контрактов.';return 0}
+  if(v>t.remainingVolume+.0001){el.className='alert bad';el.textContent=`Можно закрыть максимум ${t.remainingVolume.toFixed(2)} контр.`;return 0}
+  const signed=t.direction==='Long'?(p-t.avgPrice):(t.avgPrice-p);
+  const pnl=signed*specs[t.instrument].contract*v;
+  const eventName=sel==='stop'?'Стоп':sel==='be'?'Безубыток':'Выход';
+  el.className=pnl<0?'alert bad':'alert good';
+  el.textContent=`${eventName}: ${pnl<0?'убыток':'результат'} ${money(pnl)} · останется ${Math.max(0,t.remainingVolume-v).toFixed(2)} контр.`;
+  return v
+ }
+ function exitStep(){return Number((specs[t.instrument]&&specs[t.instrument].step)||.01)}
+ function roundToStep(value,mode='round'){
+  const step=exitStep();
+  const units=Number(value)/step;
+  const rounded=mode==='ceil'?Math.ceil(units-1e-9):mode==='floor'?Math.floor(units+1e-9):Math.round(units);
+  return Math.max(step,rounded*step)
+ }
+ function decimalsForStep(step){
+  const s=String(step);
+  return s.includes('.')?s.split('.')[1].length:0
+ }
+ function setExitVolume(value,mode='round'){
+  const step=exitStep(),digits=Math.max(2,decimalsForStep(step));
+  const next=Math.min(t.remainingVolume,roundToStep(value,mode));
+  $('#mExitAmount').value=next.toFixed(digits);
+  $('#mExitRange').value=next.toFixed(digits);
+  $('#mExitVolumeText').textContent=`Закрываем: ${next.toFixed(digits)} контр. из ${t.remainingVolume.toFixed(digits)}`;
+  $('#mExitMinus').disabled=next<=step+.0000001;
+  $('#mExitPlus').disabled=next>=t.remainingVolume-.0000001;
+  preview()
+ }
+ function applyExitEventPrice(){
+  const sel=$('#mTargetSelect').value;
+  if(sel==='stop'){
+   $('#mExitPrice').value=Number(t.currentStop).toFixed(d);
+   $('#mExitPriceSource').textContent=`Подставлен текущий стоп: ${Number(t.currentStop).toFixed(d)}. Можно исправить фактическую цену вручную.`;
+  }else if(sel==='be'){
+   $('#mExitPrice').value=Number(t.avgPrice).toFixed(d);
+   $('#mExitPriceSource').textContent=`Подставлена точная цена БУ по средней: ${Number(t.avgPrice).toFixed(d)}.`;
+  }else{
+   const plan=plans[Number(sel)];
+   if(t.mode==='Backtest'&&isRangeGridTrade(t)&&plan){
+    const suggested=rangeGridSuggestedExitVolume(t,plan.label);
+    if(suggested>0){
+     setExitVolume(suggested);
+     $('#mExitPriceSource').textContent=`По сетке: на ${plan.label} предлагается ${suggested.toFixed(2)} контр. по распределению 60% / 20% / 20%. Введи фактическую цену фиксации.`;
+    }else{
+     $('#mExitPriceSource').textContent='На этой цели по фактическому объёму контрактов уже нет. Выбери следующую доступную фиксацию.';
+    }
+   }else{
+    $('#mExitPriceSource').textContent='Для цели введи фактическую цену фиксации или выбери быструю цену.';
+   }
+  }
+  updateTakeDateVisibility();
+  preview()
+ }
+ $('#mTargetSelect').onchange=applyExitEventPrice;$('#mExitPrice').oninput=()=>{
+  $('#mExitPriceSource').textContent='Фактическая цена изменена вручную.';
+  preview()
+ };
+ $('#mExitAmount').oninput=()=>{
+  const step=exitStep(),digits=Math.max(2,decimalsForStep(step));
+  const raw=Math.min(t.remainingVolume,Math.max(step,num($('#mExitAmount').value)));
+  $('#mExitRange').value=raw.toFixed(digits);
+  $('#mExitVolumeText').textContent=`Закрываем: ${raw.toFixed(digits)} контр. из ${t.remainingVolume.toFixed(digits)}`;
+  preview()
+ };
+ $('#mExitAmount').onfocus=()=>$('#mExitAmount').select();
+ $('#mExitAmount').onblur=()=>{
+  if(!$('#mExitAmount').value||num($('#mExitAmount').value)<exitStep())$('#mExitAmount').value=exitStep().toFixed(Math.max(2,decimalsForStep(exitStep())));
+  setExitVolume($('#mExitAmount').value)
+ };
+ $('#mExitRange').oninput=()=>setExitVolume($('#mExitRange').value);
+ $('#mExitMinus').onclick=()=>setExitVolume(num($('#mExitAmount').value)-exitStep());
+ $('#mExitPlus').onclick=()=>setExitVolume(num($('#mExitAmount').value)+exitStep());
+ $('#qOne').onclick=()=>setExitVolume(exitStep());
+ // 50% округляем вверх до ближайшего допустимого шага:
+ // при 0.03 остатка получится 0.02.
+ $('#qHalf').onclick=()=>setExitVolume(t.remainingVolume/2,'ceil');
+ $('#qAll').onclick=()=>setExitVolume(t.remainingVolume);
+ setExitVolume(t.remainingVolume);
+ $('#mSaveExit').onclick=()=>{
+ const p=num($('#mExitPrice').value),v=preview(),sel=$('#mTargetSelect').value;
+ if(!sel||!p||!v)return;
+  let exitAt=nowIso(),exitAtSource='recorded_at';
+  const isTake=!isNaN(Number(sel))&&sel!=='';
+  if(t.mode==='Backtest'&&isRangeGridTrade(t)&&isTake){
+   const plan=plans[Number(sel)],suggested=rangeGridSuggestedExitVolume(t,plan.label);
+   if(suggested<instrumentStep-.000001)return alert('На этой цели по фактическому объёму контрактов уже нет доступной фиксации.');
+   if(Math.abs(v-suggested)>instrumentStep/100)return alert(`Для ${plan.label} по фактическому объёму нужно зафиксировать ${suggested.toFixed(2)} контр.`);
+  }
+  if(t.mode==='Backtest'&&isTake){
+   const exitDate=$('#mExitDate')?$('#mExitDate').value.trim():'';
+   const exitTime=$('#mExitTime')?$('#mExitTime').value.trim():'';
+   if(exitDate||exitTime){
+    const dateOk=/^\d{2}\.\d{2}\.(\d{2}|\d{4})$/.test(exitDate);
+    const timeOk=/^([01]\d|2[0-3]):[0-5]\d$/.test(exitTime);
+    if(!dateOk||!timeOk)return alert('Для даты/времени тейка заполни дату и время полностью или оставь оба поля пустыми.');
+    if(!parseBacktestDateKey(exitDate))return alert('Дата тейка некорректна.');
+    exitAt=`${exitDate} ${exitTime}`;
+    exitAtSource='manual_backtest_take'
+   }
+  }
+  let label='',group='',reason='Тейк';
+  if(!isNaN(Number(sel))&&sel!==''){const plan=plans[Number(sel)];label=plan.label;group=plan.group}
+  else if(sel==='stop'){label='Стоп';reason='Стоп'}
+  else if(sel==='be'){label='БУ';reason='БУ'}
+  else {label='Ручной';reason='Ручное'}
+  const signed=t.direction==='Long'?(p-t.avgPrice):(t.avgPrice-p),pnl=signed*specs[t.instrument].contract*v;
+  const remainingAfter=floorStep(t.remainingVolume-v,instrumentStep);
+  t.exits.push({
+   price:p,
+   volume:v,
+   percentInitial:t.totalVolume?(v/t.totalVolume)*100:0,
+   percentRemaining:t.remainingVolume?(v/t.remainingVolume)*100:0,
+   reason,
+   label,
+   group,
+   comment:$('#mExitComment').value,
+   at:exitAt,
+   atSource:exitAtSource,
+   pnl,
+   stopPriceAtExit:reason==='Стоп'||reason==='БУ'?Number(t.currentStop):null,
+   remainingAfter
+  });
+  t.pnl=realizedPnl(t);
+  t.rResult=t.initialRisk?t.pnl/t.initialRisk:0;
+  t.remainingVolume=remainingAfter;
+  t.currentRisk=t.remainingVolume?stopRiskValue(t,t.currentStop):0;
+  if(isTake)cancelPendingEntries(t,'снят после первой фиксации');
+  else if(reason==='Стоп'||reason==='БУ')cancelPendingEntries(t,'снят после выхода по стопу');
+  let autoCompleted=false;
+  if(t.remainingVolume<=0.0001){
+   t.remainingVolume=0;t.closedAt=exitAt;
+   cancelPendingEntries(t,'снят после закрытия сделки');
+   if(reason==='Стоп'||reason==='БУ'){
+    autoFinalizeProtectiveExit(t,reason);
+    autoCompleted=true;
+   }else{
+    t.status='pending';
+   }
+   if(!t.balanceApplied){
+    addBalanceEvent('trade_close',t.pnl,{id:'BE-TRADE-'+t.id,trade_id:t.id,comment:`Закрытие ${t.instrument} ${t.direction}`,at:t.closedAt});
+    t.balanceApplied=true;
+    t.appliedPnl=t.pnl;
+   }
+  }
+  touchTrade(t);
+  save();$('#tradeModal').classList.remove('show');
+  if(autoCompleted){
+   form.doneView=t.status==='pending'?'pending':'history';
+   $$('#doneSeg button').forEach(x=>x.classList.toggle('active',x.dataset.done===form.doneView));
+   nav('done');
+  }else{
+   renderOpen();renderDone()
+  }
+ }
+}
+function priceReachedLabel(t){
+ const grouped=t.priceReachedByGroup&&typeof t.priceReachedByGroup==='object'?t.priceReachedByGroup:{};
+ const parts=Object.values(grouped).filter(v=>Array.isArray(v)&&v.length).map(v=>v.join(', '));
+ if(parts.length)return parts.join(' · ');
+ const arr=Array.isArray(t.priceReachedTargets)?t.priceReachedTargets:[];
+ if(arr.length)return arr.join(', ');
+ const legacy=[];
+ if(t.reachedT4)legacy.push('Т4');
+ if(t.reachedT6)legacy.push('Т6');
+ return legacy.length?legacy.join(', '):'—'
+}
+function maxTargetsText(t){
+ const obj=t.maxTargets&&typeof t.maxTargets==='object'?t.maxTargets:{};
+ const parts=Object.entries(obj).filter(([,v])=>v).map(([g,v])=>`${g}: ${v}`);
+ return parts.length?parts.join(' · '):(t.maxTarget||'—')
+}
+function showFinalize(id){
+ const t=getTrade(id);
+ if(t.needsT5Review&&t.strategy==='Слабый'&&t.subtype==='от Т4'){
+  modal('Завершить сделку',`<div class="alert good">Сделка закрыта по ${t.autoFinalizedReason||'стопу'}. Максимальные цели отмечать не нужно.</div>
+  <div class="field"><label>Цена после входа дошла до Т5?</label><select id="mReachedT5"><option>Да</option><option>Нет</option></select></div>
+  <div class="field"><label>Комментарий по Т5</label><textarea id="mT5Comment" placeholder="необязательно"></textarea></div>
+  <button class="primary" id="mFinalizeT5">Сохранить и завершить</button>`);
+  $('#mFinalizeT5').onclick=()=>{
+   t.reachedT5=$('#mReachedT5').value;
+   t.t5Comment=$('#mT5Comment').value.trim();
+   t.needsT5Review=false;
+   t.status='done';
+   t.finalizedAt=nowIso();
+   touchTrade(t);
+   save();$('#tradeModal').classList.remove('show');renderDone()
+  };
+  return
+ }
+ const targets=(t.availableTargets&&t.availableTargets.length?t.availableTargets:availableTargetsForTrade(t));
+ const selectedKeys=new Set();
+ if(t.priceReachedByGroup&&typeof t.priceReachedByGroup==='object'){
+  Object.entries(t.priceReachedByGroup).forEach(([group,labels])=>(labels||[]).forEach(label=>selectedKeys.add(`${group}||${label}`)))
+ }else{
+  (t.priceReachedTargets||[]).forEach(label=>{
+   targets.filter(x=>x.label===label).forEach(x=>selectedKeys.add(`${x.group}||${x.label}`))
+  })
+ }
+ const reachedChecks=targets.map((x,i)=>{
+  const key=`${x.group}||${x.label}`;
+  return `<label class="checkline"><input type="checkbox" data-reached-target="${i}" ${selectedKeys.has(key)?'checked':''}> ${x.group}: ${x.label}</label>`
+ }).join('') || '<div class="mini-note">Нет целей для этой стратегии.</div>';
+ modal('Завершить статистику',`<div class="field"><label>Цена достигла</label>${reachedChecks}<div class="mini-note">При выборе старшей цели предыдущие цели этой же группы отмечаются автоматически.</div></div>
+ ${t.strategy==='Слабый'&&t.subtype==='от Т4'?'<div class="field"><label>Цена дошла до Т5?</label><select id="mReachedT5"><option>Да</option><option>Нет</option></select></div><div class="field"><label>Комментарий почему</label><textarea id="mT5Comment"></textarea></div>':''}
+ <details class="details"><summary>Оценка исполнения · необязательно</summary><div class="inside">
+ <div class="field"><label>Сделка выполнена по плану?</label><select id="mByPlan"><option value="">Не отмечать</option><option>Да</option><option>Нет</option></select></div>
+ <div class="field"><label>Нарушения, через запятую</label><input id="mViolations" placeholder="ранний вход, ранний выход..."></div>
+ </div></details>
+ <button class="primary" id="mFinalize">Сохранить и завершить</button>`);
+ const boxes=$$('[data-reached-target]');
+ boxes.forEach(cb=>{
+  cb.onchange=()=>{
+   const current=targets[Number(cb.dataset.reachedTarget)];
+   const sameGroup=targets.map((x,i)=>({x,i})).filter(z=>z.x.group===current.group);
+   const position=sameGroup.findIndex(z=>z.i===Number(cb.dataset.reachedTarget));
+   sameGroup.forEach((z,pos)=>{
+    const box=boxes.find(b=>Number(b.dataset.reachedTarget)===z.i);
+    if(!box)return;
+    if(cb.checked&&pos<=position)box.checked=true;
+    if(!cb.checked&&pos>=position)box.checked=false;
+   })
+  }
+ });
+ $('#mFinalize').onclick=()=>{
+  const grouped={};
+  boxes.filter(cb=>cb.checked).forEach(cb=>{
+   const x=targets[Number(cb.dataset.reachedTarget)];
+   grouped[x.group]=grouped[x.group]||[];
+   grouped[x.group].push(x.label)
+  });
+  const maxTargets={};
+  Object.entries(grouped).forEach(([group,labels])=>{maxTargets[group]=labels[labels.length-1]});
+  t.priceReachedByGroup=grouped;
+  t.priceReachedTargets=Object.values(grouped).flat();
+  t.maxTargets=maxTargets;
+  t.maxTarget=Object.values(maxTargets).join(' / ')||'—';
+  t.reachedT4=t.priceReachedTargets.includes('Т4');
+  t.reachedT6=t.priceReachedTargets.includes('Т6');
+  t.byPlan=$('#mByPlan').value||'';
+  t.violations=$('#mViolations').value.split(',').map(x=>x.trim()).filter(Boolean);
+  if($('#mReachedT5')){t.reachedT5=$('#mReachedT5').value;t.t5Comment=$('#mT5Comment').value}
+  t.status='done';t.finalizedAt=nowIso();touchTrade(t);save();$('#tradeModal').classList.remove('show');renderDone()
+ }
+}
+function reverseAppliedTradeBalance(t){
+ if(!t.balanceApplied)return;
+ const applied=Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0);
+ state.balance=Math.round((Number(state.balance||0)-applied)*100)/100;
+ removeTradeBalanceEvent(t.id);
+ t.balanceApplied=false;
+ t.appliedPnl=0
+}
+function entryStatus(e){
+ if(e&&e.executed===true)return 'executed';
+ if(e&&e.executed===false)return 'not_executed';
+ return 'pending';
+}
+function executedEntries(t){return (t.entries||[]).filter(e=>entryStatus(e)==='executed')}
+function pendingEntries(t){return (t.entries||[]).filter(e=>entryStatus(e)==='pending')}
+function pendingEntryRisk(t){
+ const sp=specs[t.instrument];
+ if(!sp)return 0;
+ const value=pendingEntries(t).reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.currentStop||t.initialStop||0))*sp.contract*Number(e.volume||0),0);
+ return Math.round(value*100000000)/100000000;
+}
+function reservedRiskForTrade(t){
+ const value=Math.max(0,Number(t&&t.currentRisk||0))+pendingEntryRisk(t||{});
+ return Math.round(value*100000000)/100000000;
+}
+function entryExecutionLabel(e){
+ const status=entryStatus(e);
+ if(status==='executed')return 'Исполнен';
+ if(status==='pending')return 'Ожидает цены';
+ return `Не исполнен${e.notExecutedReason?` · ${e.notExecutedReason}`:''}`;
+}
+function cancelPendingEntries(t,reason){
+ const pending=pendingEntries(t);
+ if(!pending.length)return false;
+ const at=nowIso();
+ pending.forEach(e=>{
+  e.executed=false;
+  e.notExecutedReason=reason;
+  e.notExecutedAt=at;
+ });
+ return true;
+}
+function recalculateExecutedEntryState(t){
+ const entries=executedEntries(t),sp=specs[t.instrument];
+ if(!sp||!entries.length)return false;
+ const total=entries.reduce((sum,e)=>sum+Number(e.volume||0),0);
+ const avg=entries.reduce((sum,e)=>sum+Number(e.price||0)*Number(e.volume||0),0)/total;
+ t.avgPrice=avg;
+ t.totalVolume=Math.round(total*1000000)/1000000;
+ t.remainingVolume=t.totalVolume;
+ t.initialRisk=entries.reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.initialStop||0))*sp.contract*Number(e.volume||0),0);
+ t.currentRisk=stopRiskValue(t,t.currentStop);
+ return true;
+}
+function markPendingEntryExecuted(t,index){
+ const entry=(t.entries||[])[index];
+ if(!entry||entryStatus(entry)!=='pending'||(t.exits||[]).length)return;
+ entry.executed=true;
+ entry.executedAt=nowIso();
+ recalculateExecutedEntryState(t);
+ touchTrade(t);
+ save();
+ $('#tradeModal').classList.remove('show');
+ renderOpen();
+ updateHeader();
+}
+function allocateExitVolumes(total,exits,step){
+ const requested=exits.map(e=>Math.max(0,Number(e.requestedVolume!=null?e.requestedVolume:e.volume||0)));
+ const planned=requested.reduce((sum,v)=>sum+v,0);
+ const allocatedTotal=Math.min(total,planned);
+ if(!planned||allocatedTotal<=0)return requested.map(()=>0);
+ const totalUnits=Math.round(allocatedTotal/step);
+ const raw=requested.map(v=>totalUnits*v/planned);
+ const units=raw.map(v=>Math.floor(v+1e-9));
+ let remaining=totalUnits-units.reduce((sum,v)=>sum+v,0);
+ raw.map((v,index)=>({index,fraction:v-Math.floor(v)}))
+  .sort((a,b)=>b.fraction-a.fraction||a.index-b.index)
+  .forEach(item=>{if(remaining>0){units[item.index]++;remaining--}});
+ return units.map(v=>Math.round(v*step*1000000)/1000000)
+}
+function isRangeGridTrade(t){
+ return !!(t&&t.strategy==='Диапазон'&&Array.isArray(t.methods)&&t.methods.includes('По сетке'))
+}
+function isRangeImpulseTrade(t){
+ return !!(t&&t.strategy==='Диапазон'&&Array.isArray(t.methods)&&t.methods.includes('И'))
+}
+function rangeEntryReviewLevels(t){
+ if(!t)return [];
+ const methods=Array.isArray(t.methods)?t.methods:String(t.method||'').split(' + ').filter(Boolean);
+ if(methods.includes('К-3')){
+  const entry=(t.entries||[]).find(e=>['23','38'].includes(String(e.level||'')));
+  return entry?[String(entry.level)]:[];
+ }
+ if(t.strategy==='Диапазон'){
+  if(methods.includes('По сетке'))return ['38','14','-15'];
+  if(methods.includes('И'))return ['50','23','-15'];
+ }
+ if(methods.includes('И'))return ['50','23','-15'];
+ return []
+}
+function isRangeEntryReviewAvailable(t){
+ return rangeEntryReviewLevels(t).length>0&&Number(t.remainingVolume||0)<=0.0001
+}
+function rangeGridAllocation(t){
+ const step=(specs[t.instrument]&&specs[t.instrument].step)||.01;
+ return allocateExitVolumes(Number(t.totalVolume||0),[{volume:60},{volume:20},{volume:20}],step)
+}
+function rangeGridSuggestedExitVolume(t,label){
+ const labels=['Граница Д','1.6 Д','2.0 Д'];
+ const index=labels.indexOf(label);
+ if(index<0)return 0;
+ const already=(t.exits||[])
+  .filter(exit=>exit.label===label)
+  .reduce((sum,exit)=>sum+Number(exit.volume||0),0);
+ return Math.max(0,Number(rangeGridAllocation(t)[index]||0)-already)
+}
+function isWolfAutoExit(exit){return exit&&exit.group==='Цели Вульфа'&&['Т4','Т6'].includes(exit.label)}
+function allocateWolfExitVolumes(total,exits,step){
+ const groups={Т4:[],Т6:[]};
+ (exits||[]).forEach((exit,index)=>{if(isWolfAutoExit(exit))groups[exit.label].push({index,volume:exit.requestedVolume!=null?exit.requestedVolume:exit.volume})});
+ const labels=['Т4','Т6'].filter(label=>groups[label].length);
+ const result=(exits||[]).map(()=>0);
+ if(!labels.length)return result;
+ const weights=labels.map(label=>({volume:labels.length===2?(label==='Т4'?60:40):100}));
+ const groupVolumes=allocateExitVolumes(total,weights,step);
+ labels.forEach((label,groupIndex)=>{
+  const requestedTotal=groups[label].reduce((sum,item)=>sum+Math.max(0,Number(item.volume||0)),0);
+  const scaled=requestedTotal
+   ?groups[label].map(item=>({volume:groupVolumes[groupIndex]*Math.max(0,Number(item.volume||0))/requestedTotal}))
+   :groups[label].map(()=>({volume:0}));
+  const allocated=allocateExitVolumes(groupVolumes[groupIndex],scaled,step);
+  groups[label].forEach((item,index)=>{result[item.index]=allocated[index]})
+ });
+ return result
+}
+function isImpulseStrategy(t){return t&&t.strategy==='Импульс'&&Array.isArray(t.methods)&&t.methods.includes('И')}
+function allocateImpulseExitVolumes(total,exits,step){
+ const count=(exits||[]).length;
+ if(!count||count>3)return null;
+ const weights=count===1?[100]:count===2?[60,40]:[50,25,25];
+ return allocateExitVolumes(total,weights.map(volume=>({volume})),step)
+}
+function recalculateImpulseExecution(t){
+ const sp=specs[t.instrument],step=sp.step,entries=executedEntries(t);
+ if(!entries.length){
+  (t.exits||[]).forEach(exit=>{
+   const requested=Math.max(0,Number(exit.requestedVolume!=null?exit.requestedVolume:exit.volume||0));
+   exit.requestedVolume=requested;
+   exit.volume=0;
+   exit.excludedVolume=requested;
+   exit.calculationStatus='excluded_no_position';
+   exit.pnl=0;
+   exit.percentInitial=0;
+   exit.remainingAfter=0;
+  });
+  t.totalVolume=0;
+  t.avgPrice=0;
+  t.initialRisk=0;
+  t.currentRisk=0;
+  t.remainingVolume=0;
+  t.pnl=0;
+  t.rResult=0;
+  t.status='not_triggered';
+  t.closedAt=t.closedAt||nowIso();
+  t.finalizedAt=nowIso();
+  t.priceReachedTargets=[];
+  t.priceReachedByGroup={};
+  t.maxTargets={};
+  t.maxTarget='—';
+  t.entryExecutionCorrection={at:nowIso(),actualEntryCount:0,actualVolume:0};
+  return {ok:true,remaining:0,notTriggered:true}
+ }
+ const total=entries.reduce((sum,e)=>sum+Number(e.volume||0),0);
+ const avg=entries.reduce((sum,e)=>sum+Number(e.price||0)*Number(e.volume||0),0)/total;
+ const initialRisk=entries.reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.initialStop||0))*sp.contract*Number(e.volume||0),0);
+ t.totalVolume=Math.round(total*1000000)/1000000;
+ t.avgPrice=avg;
+ t.initialRisk=initialRisk;
+ const wolfAllocated=allocateWolfExitVolumes(t.totalVolume,t.exits||[],step);
+ const impulseAllocated=(isImpulseStrategy(t)||isRangeImpulseTrade(t))?allocateImpulseExitVolumes(t.totalVolume,t.exits||[],step):null;
+ let remaining=t.totalVolume;
+ (t.exits||[]).forEach((exit,index)=>{
+  const requested=Math.max(0,Number(exit.requestedVolume!=null?exit.requestedVolume:exit.volume||0));
+  // Grid targets suggest 60/20/20 at entry time, but the journal must retain the actual closed volume.
+  const desired=impulseAllocated?impulseAllocated[index]:(isWolfAutoExit(exit)?wolfAllocated[index]:requested);
+  const volume=Math.min(remaining,desired||0);
+  exit.requestedVolume=requested;
+  exit.volume=volume;
+  exit.excludedVolume=Math.max(0,requested-volume);
+  exit.calculationStatus=volume>0?'counted':'excluded_no_position';
+  const signed=t.direction==='Long'?Number(exit.price)-avg:avg-Number(exit.price);
+  exit.pnl=signed*sp.contract*volume;
+  exit.percentInitial=t.totalVolume?volume/t.totalVolume*100:0;
+  remaining=Math.max(0,floorStep(remaining-volume,step));
+  exit.remainingAfter=remaining;
+ });
+ t.remainingVolume=remaining;
+ t.pnl=realizedPnl(t);
+ t.rResult=t.initialRisk?t.pnl/t.initialRisk:0;
+ t.currentRisk=remaining?stopRiskValue(t,t.currentStop):0;
+ if(remaining>0){
+  t.status='open';t.closedAt=null;t.finalizedAt=null;
+  t.priceReachedTargets=[];t.priceReachedByGroup={};t.maxTargets={};t.maxTarget='—'
+ }else if(t.status==='not_triggered'){
+  t.status='done';
+ }
+ t.entryExecutionCorrection={at:nowIso(),actualEntryCount:entries.length,actualVolume:t.totalVolume};
+ if(isImpulseStrategy(t))t.impulseExecutionCorrection=t.entryExecutionCorrection;
+ return {ok:true,remaining}
+}
+function updateAppliedTradeBalance(t,previousPnl){
+ const corrected=Math.round(Number(t.pnl||0)*100)/100;
+ const previous=Math.round(Number(previousPnl||0)*100)/100;
+ const event=(state.balanceEvents||[]).find(e=>e.type==='trade_close'&&e.trade_id===t.id);
+ if(!event){
+  addBalanceEvent('trade_close',corrected,{id:'BE-TRADE-'+t.id,trade_id:t.id,comment:`Закрытие ${t.instrument} ${t.direction} · автокоррекция входов`,at:t.closedAt||nowIso()});
+ }else{
+  event.amount=corrected;
+  event.comment=`Закрытие ${t.instrument} ${t.direction} · автокоррекция входов`;
+  state.balance=Math.round((Number(state.balance||0)+corrected-previous)*100)/100;
+  rebaseBalanceEvents()
+ }
+ t.balanceApplied=true;
+ t.appliedPnl=corrected
+}
+function rebuildTradeState(t){
+ const step=(specs[t.instrument]||{step:.01}).step;
+ t.pnl=realizedPnl(t);
+ t.rResult=t.initialRisk?t.pnl/t.initialRisk:0;
+ const used=(t.exits||[]).reduce((s,e)=>s+Number(e.volume||0),0);
+ t.remainingVolume=Math.max(0,floorStep(Number(t.totalVolume||0)-used,step));
+ const lastStop=(t.stops||[]).at(-1);
+ t.currentStop=lastStop?Number(lastStop.price):Number(t.initialStop);
+ t.currentRisk=t.remainingVolume?stopRiskValue(t,t.currentStop):0;
+ if(t.remainingVolume>0){
+  t.status='open';t.closedAt=null;t.finalizedAt=null;
+  t.priceReachedTargets=[];t.priceReachedByGroup={};t.maxTargets={};t.maxTarget='—'
+ }else if(t.status==='open'){
+  t.status='pending';t.closedAt=t.closedAt||nowIso()
+ }
+}
+function undoLastExit(id){
+ const t=getTrade(id);
+ if(!t||(t.exits||[]).length===0)return;
+ if(!confirm('Отменить последний выход? Сделка и баланс будут пересчитаны.'))return;
+ reverseAppliedTradeBalance(t);
+ t.exits.pop();
+ rebuildTradeState(t);
+ touchTrade(t);
+ save();$('#tradeModal').classList.remove('show');renderOpen();renderDone();updateHeader()
+}
+function undoLastStop(id){
+ const t=getTrade(id);
+ if(!t||(t.stops||[]).length===0)return;
+ if(!confirm('Отменить последний перенос стопа?'))return;
+ t.stops.pop();
+ rebuildTradeState(t);
+ touchTrade(t);
+ save();$('#tradeModal').classList.remove('show');renderOpen();renderDone()
+}
+function deleteTrade(id){
+ const t=getTrade(id);
+ if(!t||!confirm('Удалить эту сделку полностью? Отражённая в балансе прибыль или убыток будет отменена.'))return;
+ reverseAppliedTradeBalance(t);
+ state.trades=state.trades.filter(x=>x.id!==id);
+ save();$('#tradeModal').classList.remove('show');renderOpen();renderDone();updateHeader()
+}
+
+function showExecutionReview(id){
+ const t=getTrade(id);
+ if(!t)return;
+ modal('Оценка исполнения',`<div class="mini-note" style="margin-bottom:9px">Заполняется только при необходимости. На расчёт PnL и R не влияет.</div>
+ <div class="field"><label>Сделка выполнена по плану?</label><select id="mReviewPlan">
+  <option value="">Не отмечать</option><option value="Да" ${t.byPlan==='Да'?'selected':''}>Да</option><option value="Нет" ${t.byPlan==='Нет'?'selected':''}>Нет</option>
+ </select></div>
+ <div class="field"><label>Нарушения, через запятую</label><input id="mReviewViolations" value="${(t.violations||[]).join(', ')}" placeholder="ранний вход, ранний выход..."></div>
+ <button class="primary" id="mSaveReview">Сохранить</button>`);
+ $('#mSaveReview').onclick=()=>{
+  t.byPlan=$('#mReviewPlan').value||'';
+  t.violations=$('#mReviewViolations').value.split(',').map(x=>x.trim()).filter(Boolean);
+  touchTrade(t);
+ save();$('#tradeModal').classList.remove('show');renderDone();renderOpen()
+ }
+}
+function entryAtImpulseLevel(t,level){return (t.entries||[]).find(e=>String(e.level||'')===level)}
+function isImpulseEntryReview(t){
+ const methods=Array.isArray(t&&t.methods)?t.methods:String((t&&t.method)||'').split(' + ').filter(Boolean);
+ return methods.includes('И')
+}
+function usesAutomaticLevelReview(t){return isImpulseEntryReview(t)||isRangeGridTrade(t)}
+function levelReviewTitle(t){return isImpulseEntryReview(t)?'Уровни И':isRangeGridTrade(t)?'Уровни диапазона':'Проверка входов'}
+function entryLevelReview(t,level){
+ const entry=entryAtImpulseLevel(t,level);
+ const planned=!!entry;
+ const saved=t.entryLevelReviews&&t.entryLevelReviews[level];
+ if(saved&&typeof saved==='object'){
+  return {planned,reviewed:true,priceReached:saved.priceReached==='yes'?'yes':saved.priceReached==='no'?'no':'',entryExecuted:planned&&saved.entryExecuted===true}
+ }
+ const legacy=t.entryLevelOutcomes&&t.entryLevelOutcomes[level];
+ if(legacy==='executed')return {planned,reviewed:true,priceReached:'yes',entryExecuted:planned};
+ if(legacy==='not_reached')return {planned,reviewed:true,priceReached:'no',entryExecuted:false};
+ if(legacy==='reached')return {planned,reviewed:true,priceReached:'yes',entryExecuted:false};
+ const entryExecuted=planned&&entryStatus(entry)==='executed';
+ return {planned,reviewed:entryExecuted,priceReached:entryExecuted?'yes':'',entryExecuted}
+}
+function rangeEntryOutcome(t,level){
+ if(!usesAutomaticLevelReview(t)){
+  const saved=t.entryLevelOutcomes&&t.entryLevelOutcomes[level];
+  if(saved==='executed'||saved==='not_reached')return saved;
+  const entry=entryAtImpulseLevel(t,level);
+  return entry&&entryStatus(entry)==='executed'?'executed':'not_reached'
+ }
+ const review=entryLevelReview(t,level);
+ if(!review.reviewed)return 'not_reviewed';
+ if(review.entryExecuted)return 'executed';
+ if(review.priceReached==='yes')return 'reached_without_entry';
+ return 'not_reached'
+}
+function entryLevelReviewLabel(t,level){
+ const review=entryLevelReview(t,level);
+ if(!review.reviewed)return 'Не отмечено';
+ if(review.entryExecuted)return 'Вход исполнен';
+ if(review.priceReached==='yes')return review.planned?'Цена дошла, вход не исполнен':'Цена дошла, вход не планировался';
+ return review.planned?'Вход не исполнен: цена не дошла':'Цена не дошла'
+}
+function rangeEntryReviewText(t){
+ if(!isRangeEntryReviewAvailable(t))return '';
+ const automatic=usesAutomaticLevelReview(t);
+ const lines=rangeEntryReviewLevels(t).map(level=>`${level}: ${automatic?entryLevelReviewLabel(t,level):(rangeEntryOutcome(t,level)==='executed'?'Вход исполнен':'Входа не было · цена не дошла')}`);
+ const corrected=t.entryExecutionCorrection?`<br><span class="mini-note">Математика пересчитана по фактическому объёму: ${Number(t.entryExecutionCorrection.actualVolume||0).toFixed(2)} контр.</span>`:'';
+ return `<p><b>${automatic?levelReviewTitle(t):'Проверка входов'}:</b><br>${lines.join('<br>')}${corrected}</p>`
+}
+function showRangeEntryReview(id){
+ const t=getTrade(id);
+ if(!isRangeEntryReviewAvailable(t))return;
+ const levels=rangeEntryReviewLevels(t);
+ const automatic=usesAutomaticLevelReview(t);
+ const fields=levels.map((level,index)=>{
+  const entry=entryAtImpulseLevel(t,level);
+  if(automatic){
+   const review=entryLevelReview(t,level);
+   if(review.entryExecuted){
+    return `<div class="field"><label>Уровень ${level} · ${entry?'плановый вход':'вход'}</label><div class="alert good">Вход исполнен</div></div>`
+   }
+   const value=!review.reviewed?'':review.priceReached==='yes'?'reached':'not_reached';
+   const label=entry?'плановый вход не исполнен':'вход не планировался';
+   return `<div class="field"><label>Уровень ${level} · ${label}</label><select id="mRangeEntry${index}"><option value="" ${value===''?'selected':''}>Не отмечено</option><option value="reached" ${value==='reached'?'selected':''}>Цена дошла</option><option value="not_reached" ${value==='not_reached'?'selected':''}>Цена не дошла</option></select></div>`
+  }
+  const outcome=rangeEntryOutcome(t,level);
+  const missing=entry?'':' <span class="mini-note">уровень не был записан при создании сделки</span>';
+  return `<div class="field"><label>Вход ${level}${missing}</label><select id="mRangeEntry${index}"><option value="executed" ${outcome==='executed'?'selected':''}>Вход состоялся</option><option value="not_reached" ${outcome==='not_reached'?'selected':''}>Входа не было · цена не дошла</option></select></div>`
+ }).join('');
+ const title=automatic?levelReviewTitle(t):'Проверка входов';
+ const note=automatic?'Исполненные в открытом журнале входы уже зафиксированы и входят в объём, риск, прибыль и R. Для остальных уровней отметь только факт: цена дошла или не дошла. Этот ответ не добавляет новый вход в математику.':'Заполняется после сделки. «Вход состоялся» учитывается в объёме, прибыли и R. «Входа не было» исключается из математики и фиксируется для статистики уровней.';
+ modal(title,`<div class="mini-note" style="margin-bottom:9px">${note}</div>${fields}<button class="primary" id="mSaveRangeEntries">Сохранить</button>`);
+ $('#mSaveRangeEntries').onclick=()=>{
+  const values={};
+  for(let index=0;index<levels.length;index++){
+   const field=$('#mRangeEntry'+index);
+   values[levels[index]]=field?field.value:'';
+  }
+  if(automatic&&levels.some(level=>!entryLevelReview(t,level).entryExecuted&&!values[level]))return alert(`Отметь, дошла ли цена до каждого уровня: ${levels.filter(level=>!entryLevelReview(t,level).entryExecuted&&!values[level]).join(', ')}.`);
+  const outcomes={},reviews={};
+  for(const level of levels){
+   const entry=entryAtImpulseLevel(t,level);
+   if(automatic){
+    const value=values[level];
+    const entryExecuted=entryLevelReview(t,level).entryExecuted;
+    const priceReached=entryExecuted||value==='reached'?'yes':'no';
+    reviews[level]={priceReached,entryExecuted};
+    outcomes[level]=entryExecuted?'executed':priceReached==='yes'?'reached':'not_reached';
+   }else outcomes[level]=values[level];
+  }
+  for(const level of levels){
+   const entry=entryAtImpulseLevel(t,level);
+   if(outcomes[level]==='executed'&&!entry)return alert(`Уровень ${level} отсутствует в исходной записи. Для старой сделки его нельзя отметить исполненным без цены и объёма.`);
+  }
+  const actualCount=(t.entries||[]).filter(entry=>{
+   const level=String(entry.level||'');
+   return Object.prototype.hasOwnProperty.call(outcomes,level)?outcomes[level]==='executed':entryStatus(entry)==='executed'
+  }).length;
+  const wasNotTriggered=t.status==='not_triggered';
+  const hadAppliedBalance=!!t.balanceApplied;
+  const previousAppliedPnl=Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0);
+  for(const level of levels){
+   const entry=entryAtImpulseLevel(t,level);
+   if(!entry)continue;
+   if(outcomes[level]==='executed'){
+    entry.executed=true;
+    delete entry.notExecutedReason;
+    delete entry.notExecutedAt;
+   }else{
+    entry.executed=false;
+    entry.notExecutedReason='цена не дошла · подтверждено в журнале';
+    entry.notExecutedAt=nowIso();
+   }
+  }
+  t.entryLevelOutcomes=outcomes;
+  if(automatic)t.entryLevelReviews=reviews;
+  t.entryLevelReviewAt=nowIso();
+  const result=recalculateImpulseExecution(t);
+  if(!result.ok)return alert(result.message);
+  if(hadAppliedBalance){
+   if(result.notTriggered||result.remaining>0)reverseAppliedTradeBalance(t);
+   else updateAppliedTradeBalance(t,previousAppliedPnl);
+  }else if(wasNotTriggered&&!result.notTriggered&&result.remaining<=0){
+   updateAppliedTradeBalance(t,0);
+  }
+  touchTrade(t);
+  save();$('#tradeModal').classList.remove('show');renderDone();renderOpen();updateHeader();
+  alert(result.notTriggered?'Входа по факту не было. Сделка исключена из PnL, R, баланса и статистики сделок.':'Входы, объём, прибыль и R пересчитаны по фактическим исполнениям.')
+ }
+}
+
+function showDetails(id){
+ const t=getTrade(id),d=specs[t.instrument].digits;
+ const entries=(t.entries||[]).map((e,i)=>{
+  const planned=entryStatus(e)==='not_executed';
+  return `${planned?'План входа':'Вход'} ${i+1}: ${Number(e.price).toFixed(d)} × ${Number(e.volume).toFixed(2)} контр. · ${e.execution||e.level}<br><span class="mini-note">${entryExecutionLabel(e)}${planned?' · объём не учитывается в прибыли и R':''}</span>${t.status==='open'&&entryStatus(e)==='pending'?` <button type="button" class="secondary" data-execute-entry="${i}">Вход исполнен</button>`:''}`
+ }).join('<br>');
+ const exits=(t.exits||[]).map(e=>`<div class="exit-row"><div><b>${e.group?e.group+': ':''}${e.label||e.reason}</b><br>Цена: ${Number(e.price).toFixed(d)} × ${Number(e.volume).toFixed(2)} контр. · ${Number(e.percentInitial||0).toFixed(1)}% начальной позиции${e.excludedVolume>0?`<br><span class="mini-note">Не учтено после коррекции: ${Number(e.excludedVolume).toFixed(2)} контр.</span>`:''}${e.calculationStatus==='excluded_no_position'?'<br><span class="mini-note">Фиксация не вошла в прибыль: фактической позиции уже не было.</span>':''}${e.stopPriceAtExit!=null?`<br>Стоп на момент выхода: ${Number(e.stopPriceAtExit).toFixed(d)}`:''}${e.remainingAfter!=null?`<br>Остаток после выхода: ${Number(e.remainingAfter).toFixed(2)}`:''}<br><span class="mini-note">${e.at?formatEventDateTime(e.at,t):''}</span></div><b>${money(e.pnl)}</b></div>`).join('')||'<div class="mini-note">Фактических выходов пока нет.</div>';
+ const stops=(t.stops||[]).map((s,i)=>`<div class="exit-row"><div><b>${s.sourceLabel|| (s.source?`Стоп на вход ${s.source}`:'Перенос стопа')}</b><br>${s.oldStop!=null?`Старый стоп: ${Number(s.oldStop).toFixed(d)}<br>`:''}Новый стоп: ${Number(s.price).toFixed(d)}<br>${s.riskAfter<0?`Зафиксировано стопом: +${money(Math.abs(s.riskAfter))}`:`Риск после переноса: ${money(s.riskAfter||0)}`}<br><span class="mini-note">${s.at?formatEventDateTime(s.at,t):''}</span></div><b>${i+1}</b></div>`).join('')||'<div class="mini-note">Переносов стопа пока нет.</div>';
+ modal(t.id,`<div class="arch"><p><strong>${t.instrument} ${t.direction}</strong> · ${t.strategy} ${t.subtype||''}${gridStrategyLabel(t)}</p>
+ <p><b>Дата сделки:</b> ${formatTradeDate(t)}<br><b>Дата закрытия:</b> ${t.closedAt?formatEventDateTime(t.closedAt,t):'—'}</p>
+ <p><b>Входы:</b><br>${entries}</p>
+ <p><b>Средняя цена:</b> ${Number(t.avgPrice).toFixed(d)} · <b>Начальный объём:</b> ${Number(t.totalVolume).toFixed(2)} · <b>Остаток:</b> ${Number(t.remainingVolume).toFixed(2)}<br><b>Риск в резерве:</b> ${money(reservedRiskForTrade(t))}</p>
+ <p><b>Первоначальный стоп:</b> ${Number(t.initialStop).toFixed(d)} · <b>Текущий стоп:</b> ${Number(t.currentStop).toFixed(d)}<br><b>${riskStatusLabel(t)}:</b> ${riskText(t.currentRisk)}</p>
+ <p><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}<br><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}<br><b>Комментарий к входу:</b> ${t.comment||'—'}</p>
+ <div class="exit-ledger"><b>История стопов</b>${stops}</div>
+ <div class="exit-ledger"><b>Фактические выходы</b>${exits}</div>
+ <p><b>Прибыль:</b> ${money(realizedPnl(t))}<br><b>Фиксация:</b> ${reachedTargets(t)}<br><b>Цена достигла:</b> ${priceReachedLabel(t)}<br><b>Итог:</b> ${Number(t.rResult||0).toFixed(2)}R · <b>Максимальные цели:</b> ${maxTargetsText(t)}</p>
+  ${rangeEntryReviewText(t)}
+ ${t.strategy==='Слабый'&&t.subtype==='от Т4'?`<p><b>Цена дошла до Т5:</b> ${t.reachedT5||'—'}${t.t5Comment?`<br><b>Комментарий Т5:</b> ${t.t5Comment}`:''}</p>`:''}
+ <p><b>По плану:</b> ${t.byPlan||'—'}. <b>Нарушения:</b> ${(t.violations||[]).join(', ')||'нет'}</p>
+ <div class="actions">
+  ${(t.exits||[]).length?'<button class="secondary" id="mUndoExit">Отменить последний выход</button>':''}
+  ${(t.stops||[]).length?'<button class="secondary" id="mUndoStop">Отменить последний стоп</button>':''}
+  ${isRangeEntryReviewAvailable(t)?`<button class="secondary wide" id="mRangeEntryReview">${usesAutomaticLevelReview(t)?levelReviewTitle(t):'Проверка входов'}</button>`:''}
+  ${Number(t.remainingVolume||0)<=0.0001?'<button class="secondary wide" id="mExecutionReview">Оценка исполнения · необязательно</button>':''}
+  <button class="secondary wide" id="mDeleteTrade">Удалить сделку</button>
+ </div></div>`);
+ if($('#mUndoExit'))$('#mUndoExit').onclick=()=>undoLastExit(t.id);
+ if($('#mUndoStop'))$('#mUndoStop').onclick=()=>undoLastStop(t.id);
+ $$('[data-execute-entry]').forEach(b=>b.onclick=()=>markPendingEntryExecuted(t,Number(b.dataset.executeEntry)));
+ if($('#mRangeEntryReview'))$('#mRangeEntryReview').onclick=()=>showRangeEntryReview(t.id);
+ if($('#mExecutionReview'))$('#mExecutionReview').onclick=()=>showExecutionReview(t.id);
+ $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
+}
+
+const APP_VERSION='59';
+const STORAGE_KEY='tradingOS_v3';
+function fileStamp(){
+ const d=new Date();
+ const pad=n=>String(n).padStart(2,'0');
+ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`
+}
+function downloadBlob(filename,content,type='application/octet-stream'){
+ const blob=new Blob([content],{type});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1500)
+}
+function formatStatusDate(value){
+ if(!value)return 'ещё не было';
+ const d=new Date(value);return isNaN(d)?String(value):formatAppDateTime(d)
+}
+function updateStorageStatus(){
+ const versionLabel=$('#appVersionLabel');if(versionLabel)versionLabel.textContent=`v${APP_VERSION}`;
+ const el=$('#storageStatus');if(!el)return;
+ el.textContent=`Trading OS v${APP_VERSION} · Последнее сохранение: ${formatStatusDate(state.lastSavedAt)} · Последняя резервная копия: ${formatStatusDate(state.lastBackupAt)}`
+}
+function buildBackupPayload(){
+ return {
+  format:'TradingOSBackup',
+  backupVersion:1,
+  appVersion:APP_VERSION,
+  schemaVersion:APP_SCHEMA_VERSION,
+  exportedAt:nowIso(),
+  storageKey:STORAGE_KEY,
+  state:JSON.parse(JSON.stringify(state)),
+  dictionaries:{
+   instruments:JSON.parse(JSON.stringify(specs)),
+   strategies:JSON.parse(JSON.stringify(rules)),
+   ot:['УрГ','УрПоИ','POC','Истор','МА200','Трендовая','V(D)','V(W)','V(M)'],
+   confirmations:['СЕРЧ','Лимитка','Объёмы','МакД','Крюк']
+  }
+ }
+}
+function createFullBackup(){
+ state.lastBackupAt=nowIso();save();
+ const payload=buildBackupPayload();
+ payload.state.lastBackupAt=state.lastBackupAt;
+ downloadBlob(`TradingOS_Backup_${fileStamp()}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+ updateStorageStatus()
+}
+function validImportedState(candidate){
+ return candidate&&typeof candidate==='object'&&Array.isArray(candidate.trades)&&Array.isArray(candidate.balanceEvents)&&candidate.instrumentDrafts&&typeof candidate.instrumentDrafts==='object'
+}
+async function restoreFromFile(file){
+ let parsed;
+ try{parsed=JSON.parse(await file.text())}catch(_){return alert('Файл не является корректной JSON-копией.')}
+ const imported=parsed&&parsed.format==='TradingOSBackup'?parsed.state:parsed;
+ if(!validImportedState(imported))return alert('В файле нет полной структуры данных Trading OS.');
+ if(!confirm(`Восстановить копию? Текущие данные будут полностью заменены.\nСделок в копии: ${(imported.trades||[]).length}`))return;
+ const restored={...cloneDefaults(),...imported};
+ restored.trades=Array.isArray(restored.trades)?restored.trades:[];
+ restored.balanceEvents=Array.isArray(restored.balanceEvents)?restored.balanceEvents:[];
+ restored.instrumentDrafts=restored.instrumentDrafts&&typeof restored.instrumentDrafts==='object'?restored.instrumentDrafts:{};
+ const legacyTimeZone=restored.timezone||'local';
+ restored.trades.forEach(t=>{
+  if(!Object.prototype.hasOwnProperty.call(t,'timezone'))t.timezone=legacyTimeZone;
+ });
+ restored.timezone=MOSCOW_TIME_ZONE;
+ restored.schemaVersion=APP_SCHEMA_VERSION;
+ restored.lastSavedAt=nowIso();
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(restored));
+ alert('Данные восстановлены. Приложение будет перезапущено.');
+ location.reload()
+}
+function csvCell(value){
+ if(value==null)return '';
+ const text=Array.isArray(value)?value.join(' | '):typeof value==='object'?JSON.stringify(value):String(value);
+ return `"${text.replaceAll('"','""')}"`
+}
+function rowsToCsv(headers,rows){
+ const lines=[headers.map(csvCell).join(';')];
+ rows.forEach(row=>lines.push(headers.map(h=>csvCell(row[h])).join(';')));
+ return '\ufeff'+lines.join('\r\n')
+}
+const CP1251_REVERSE=(()=>{
+ const chars='ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—�™љ›њќћџ ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя';
+ const map={};
+ for(let i=0;i<chars.length;i++)map[chars[i]]=i+128;
+ return map
+})();
+function repairMojibakeString(value){
+ if(typeof value!=='string'||!value)return value;
+ if(!/[РСÐÑ�]/.test(value))return value;
+ const bytes=[];
+ for(const ch of value){
+  const code=ch.charCodeAt(0);
+  if(code<128)bytes.push(code);
+  else if(CP1251_REVERSE[ch]!=null)bytes.push(CP1251_REVERSE[ch]);
+  else return value
+ }
+ let decoded='';
+ try{decoded=new TextDecoder('utf-8',{fatal:true}).decode(new Uint8Array(bytes))}
+ catch(_){return value}
+ if(!decoded||decoded===value||decoded.includes('�'))return value;
+ return /[А-Яа-яЁё]/.test(decoded)?decoded:value
+}
+function cleanExportText(value){
+ if(Array.isArray(value))return value.map(cleanExportText);
+ if(value&&typeof value==='object'){
+  const out={};
+  Object.entries(value).forEach(([k,v])=>out[k]=cleanExportText(v));
+  return out
+ }
+ return repairMojibakeString(value)
+}
+function marketGroupForInstrument(instrument){
+ if(['GOLD','SILVER'].includes(instrument))return 'Металлы';
+ if(['BR','WTI'].includes(instrument))return 'Нефть';
+ if(['EURUSD','USDCAD'].includes(instrument))return 'Валюты';
+ return 'Другое'
+}
+function sessionForTime(hour,minute=0){
+ if(hour===''||hour===null||hour===undefined||isNaN(Number(hour)))return '';
+ const mins=Number(hour)*60+Number(minute||0);
+ if(mins>=3*60&&mins<10*60)return 'Азия';
+ if(mins>=10*60&&mins<16*60+30)return 'Европа';
+ if(mins>=16*60+30&&mins<19*60)return 'Европа+США';
+ if(mins>=19*60&&mins<24*60)return 'США';
+ return 'Ночь/вне сессии'
+}
+function weekdayForDateKey(dateKey){
+ const m=String(dateKey||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ if(!m)return '';
+ const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+ if(isNaN(d))return '';
+ return ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][d.getDay()]
+}
+function tradeDateParts(t){
+ if(t&&t.mode==='Backtest'){
+  const m=String(t.date||'').match(/^(\d{2})\.(\d{2})\.(\d{2}|\d{4})(?:\s+([01]\d|2[0-3]):([0-5]\d))?/);
+  if(!m)return {dateKey:'',hour:'',minute:''};
+  const year=m[3].length===2?'20'+m[3]:m[3];
+  return {dateKey:`${year}-${m[2]}-${m[1]}`,hour:m[4]===undefined?'':Number(m[4]),minute:m[5]===undefined?'':Number(m[5])}
+ }
+ const raw=(t&&((t.date&&t.mode==='Real')?t.date:t.createdAt))||(t&&t.closedAt)||'';
+ const d=new Date(raw);
+ if(isNaN(d))return {dateKey:'',hour:'',minute:''};
+ const options={year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'};
+ const tz=tradeTimeZone(t);if(tz)options.timeZone=tz;
+ const parts=new Intl.DateTimeFormat('en-GB',options).formatToParts(d);
+ const get=type=>(parts.find(x=>x.type===type)||{}).value||'';
+ return {dateKey:`${get('year')}-${get('month')}-${get('day')}`,hour:Number(get('hour')),minute:Number(get('minute'))}
+}
+function tradeReportMeta(t){
+ const parts=tradeDateParts(t);
+ return {
+  trade_date_key:parts.dateKey,
+  trade_hour:parts.hour,
+  weekday:weekdayForDateKey(parts.dateKey),
+  session:sessionForTime(parts.hour,parts.minute),
+  market_group:marketGroupForInstrument(t.instrument)
+ }
+}
+function eventDateParts(value,t){
+ const raw=String(value||'');
+ const m=raw.match(/^(\d{2})\.(\d{2})\.(\d{2}|\d{4})(?:\s+([01]\d|2[0-3]):([0-5]\d))?/);
+ if(m){
+  const year=m[3].length===2?'20'+m[3]:m[3];
+  return {dateKey:`${year}-${m[2]}-${m[1]}`,hour:m[4]===undefined?'':Number(m[4]),minute:m[5]===undefined?'':Number(m[5])}
+ }
+ const d=new Date(raw);
+ if(isNaN(d))return {dateKey:'',hour:'',minute:''};
+ const options={year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'};
+ const tz=tradeTimeZone(t);if(tz)options.timeZone=tz;
+ const parts=new Intl.DateTimeFormat('en-GB',options).formatToParts(d);
+ const get=type=>(parts.find(x=>x.type===type)||{}).value||'';
+ return {dateKey:`${get('year')}-${get('month')}-${get('day')}`,hour:Number(get('hour')),minute:Number(get('minute'))}
+}
+function exitReportMeta(e,t){
+ const source=(e&&e.atSource)||'';
+ if(!e||e.reason!=='Тейк')return {exit_date_key:'',exit_hour:'',exit_weekday:'',exit_session:'',exit_at_source:source};
+ if(t&&t.mode==='Backtest'&&source!=='manual_backtest_take')return {exit_date_key:'',exit_hour:'',exit_weekday:'',exit_session:'',exit_at_source:source};
+ const parts=eventDateParts(e&&e.at,t);
+ return {
+  exit_date_key:parts.dateKey,
+  exit_hour:parts.hour,
+  exit_weekday:weekdayForDateKey(parts.dateKey),
+  exit_session:sessionForTime(parts.hour,parts.minute),
+  exit_at_source:source
+ }
+}
+function tradeContextFields(t){
+ const meta=tradeReportMeta(t);
+ return {
+  trade_id:t.id,
+  statistics_eligible:t.status==='done',
+  time_zone:t.timezone||'local',
+  instrument:t.instrument,
+  direction:t.direction,
+  strategy:t.strategy,
+  subtype:t.subtype||'',
+  grid_entry_level:t.gridLevel||'',
+  grid_target:gridTargetForLevel(t.gridLevel)||'',
+  trade_date_key:meta.trade_date_key,
+  trade_hour:meta.trade_hour,
+  weekday:meta.weekday,
+  session:meta.session,
+  market_group:meta.market_group
+ }
+}
+function exportAnalysisFiles(){
+ const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
+  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+ }));
+ const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];
+ (state.trades||[]).forEach(t=>{
+  const ctx=tradeContextFields(t);
+  (t.entries||[]).forEach((e,i)=>entries.push({...ctx,entry_no:i+1,price:e.price,volume:e.volume,risk_share:e.riskShare,max_allowed_volume:e.maxAllowedVolume??'',level:e.level||'',execution:e.execution||'',execution_status:entryStatus(e),execution_reason:e.notExecutedReason||'',counts_in_math:entryStatus(e)==='executed',counts_in_reserved_risk:entryStatus(e)!=='not_executed',created_at:t.createdAt||''}));
+  rangeEntryReviewLevels(t).forEach((level,index)=>{
+   const entry=entryAtImpulseLevel(t,level);
+   const automatic=usesAutomaticLevelReview(t);
+   const review=automatic?entryLevelReview(t,level):{planned:!!entry,entryExecuted:rangeEntryOutcome(t,level)==='executed',priceReached:rangeEntryOutcome(t,level)==='executed'?'yes':'no',reviewed:!!(t.entryLevelOutcomes&&t.entryLevelOutcomes[level])};
+   entryOutcomes.push({...ctx,entry_level_no:index+1,level,outcome:rangeEntryOutcome(t,level),entry_recorded:!!entry,entry_planned:review.planned,entry_executed:review.entryExecuted,price_reached:review.priceReached,reviewed:review.reviewed,counts_in_math:review.entryExecuted,reviewed_at:t.entryLevelReviewAt||''})
+  });
+  (t.exits||[]).forEach((e,i)=>exits.push({...ctx,...exitReportMeta(e,t),exit_no:i+1,reason:e.reason||'',group:e.group||'',label:e.label||'',price:e.price,volume:e.volume,requested_volume:e.requestedVolume??e.volume,excluded_volume:e.excludedVolume??0,calculation_status:e.calculationStatus||'counted',pnl:e.pnl,at:e.at||'',stop_at_exit:e.stopPriceAtExit??e.stopAtExit??'',remaining_after:e.remainingAfter??'',comment:e.comment||''}));
+  (t.stops||[]).forEach((e,i)=>stops.push({...ctx,stop_no:i+1,old_stop:e.oldStop,new_stop:e.price,source:e.sourceLabel||e.source||'',risk_after:e.riskAfter,locked_profit:e.lockedProfit,at:e.at||''}));
+  (t.ot||[]).forEach(v=>tradeOt.push({...ctx,ot:v}));
+  (t.confirmations||[]).forEach(v=>tradeConf.push({...ctx,confirmation:v}));
+ });
+ const balance=(state.balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''}));
+ const stamp=fileStamp();
+ const exportPayload={
+  format:'TradingOSAnalysisExport',
+  exportVersion:8,
+  appVersion:APP_VERSION,
+  schemaVersion:APP_SCHEMA_VERSION,
+  storageKey:STORAGE_KEY,
+  exportedAt:nowIso(),
+  rowCounts:{
+   TRADES:trades.length,
+   ENTRIES:entries.length,
+   ENTRY_LEVEL_OUTCOMES:entryOutcomes.length,
+   EXITS:exits.length,
+   STOP_EVENTS:stops.length,
+   TRADE_OT:tradeOt.length,
+   TRADE_CONFIRMATIONS:tradeConf.length,
+   BALANCE_EVENTS:balance.length
+  },
+  tables:cleanExportText({
+   TRADES:trades,
+   ENTRIES:entries,
+   ENTRY_LEVEL_OUTCOMES:entryOutcomes,
+   EXITS:exits,
+   STOP_EVENTS:stops,
+   TRADE_OT:tradeOt,
+   TRADE_CONFIRMATIONS:tradeConf,
+   BALANCE_EVENTS:balance
+  })
+ };
+ downloadBlob(`TradingOS_ANALYSIS_EXPORT_${stamp}.json`,JSON.stringify(exportPayload,null,2),'application/json;charset=utf-8');
+ alert('Экспорт для анализа подготовлен одним JSON-файлом. На телефоне файл появится в папке загрузок.')
+}
+
+function balanceOpsTotals(){
+ return (state.balanceEvents||[]).reduce((acc,e)=>{
+  if(e.type==='deposit')acc.deposit+=Number(e.amount||0);
+  if(e.type==='withdraw')acc.withdraw+=Math.abs(Number(e.amount||0));
+  return acc
+ },{deposit:0,withdraw:0})
+}
+function applyBalanceOperation(type){
+ const amount=Math.round(num($('#balanceOpAmount').value)*100)/100;
+ if(!amount||amount<=0)return alert('Введите сумму больше 0.');
+ const delta=type==='deposit'?amount:-amount;
+ if(Number(state.balance||0)+delta<0)return alert('Нельзя снять больше текущего баланса.');
+ addBalanceEvent(type,delta,{comment:$('#balanceOpComment').value});
+ $('#balanceOpAmount').value='';
+ $('#balanceOpComment').value='';
+ save();renderSettings();updateHeader();calcRisk();
+ alert(type==='deposit'?`Внесено ${money(amount)}.`:`Снято ${money(amount)}.`)
+}
+function renderSettings(){
+ updateStorageStatus();
+ $('#setBalance').value=moneyInput(state.balance);
+ const ops=balanceOpsTotals();
+ const settingsDayKey=activeRiskDateKey();
+ const settingsRiskMode=activeRiskMode();
+ if($('#balanceOpsSummary'))$('#balanceOpsSummary').textContent=`Внесено: ${money(ops.deposit)} · Снято: ${money(ops.withdraw)}`;$('#setRisk').value=state.riskPct;$('#setDayRisk').value=state.dayRiskPct;$('#setTimezone').value=state.timezone||'local';
+ $('#instrumentSpecs').innerHTML=
+ `<div class="alert good" style="margin-bottom:8px">База риска дня: ${money(dayRiskBase(settingsDayKey,settingsRiskMode))} · лимит: ${state.dayRiskPct}% = ${money(dayLimit(settingsDayKey,settingsRiskMode))} · занято: ${money(occupiedRiskForDay(settingsDayKey,settingsRiskMode)+realizedLossForDay(settingsDayKey,settingsRiskMode))}</div>`+
+ Object.entries(specs).map(([k,v])=>`<div class="metric" style="margin-bottom:6px"><span>${k}</span><b>${v.digits} знаков · шаг ${v.step} · контракт ${v.contract}</b></div>`).join('')
+}
+$('#setBalance').addEventListener('blur',()=>cleanMoneyField($('#setBalance')));
+$('#saveSettings').onclick=()=>{
+ const old=state.balance,newBal=Math.round(num($('#setBalance').value)*100)/100;
+ const newRisk=num($('#setRisk').value),newDayRisk=num($('#setDayRisk').value);
+ if(newBal<0)return alert('Баланс не может быть отрицательным.');
+ if(newRisk<0||newRisk>100)return alert('Риск на сделку должен быть от 0 до 100%.');
+ if(newDayRisk<0||newDayRisk>100)return alert('Дневной лимит должен быть от 0 до 100%.');
+ const balanceChanged=Math.abs(old-newBal)>0.000001;
+ state.riskPct=newRisk;
+ state.dayRiskPct=newDayRisk;
+ state.timezone=$('#setTimezone').value;
+ if(state.dayKey!==appDateKey()){
+  state.dayKey=appDateKey();
+  state.dayStartBalance=Number(state.balance)||0
+ }
+ if(balanceChanged){
+  addBalanceEvent('manual_adjustment',newBal-old,{comment:'Из настроек'})
+ }
+ state.schemaVersion=APP_SCHEMA_VERSION;
+ save();updateHeader();calcRisk();
+ alert(`Настройки сохранены. Дневной лимит: ${money(dayLimit())}, остаток: ${money(dayRemaining())}.`)
+}
+$('#depositBtn').onclick=()=>applyBalanceOperation('deposit');
+$('#withdrawBtn').onclick=()=>applyBalanceOperation('withdraw');
+$('#backupBtn').onclick=createFullBackup;
+$('#restoreBtn').onclick=()=>$('#restoreFile').click();
+$('#restoreFile').onchange=e=>{const file=e.target.files&&e.target.files[0];if(file)restoreFromFile(file);e.target.value=''};
+$('#analysisExportBtn').onclick=exportAnalysisFiles;
+if($('#balanceOpAmount'))$('#balanceOpAmount').addEventListener('blur',()=>cleanMoneyField($('#balanceOpAmount')));
+
+$('#addDemo').onclick=()=>{
+ const t={id:uid(),app_version:APP_VERSION,status:'open',mode:'Real',timezone:MOSCOW_TIME_ZONE,createdAt:nowIso(),instrument:'SILVER',direction:'Long',tfSetup:'M15',tfEntry:'M5',strategy:'В.5',subtype:'',method:'И',methods:['И'],
+ initialStop:56,currentStop:56,entries:[{level:'50',price:57,riskShare:100,volume:0.01,executed:true}],targets:[],availableTargets:[{group:'Цели Вульфа',label:'Т4'},{group:'Цели Вульфа',label:'Т6'},{group:'Цели И',label:'1.2'},{group:'Цели И',label:'1.6'},{group:'Цели И',label:'2.0'},{group:'Цели И',label:'2.4'},{group:'Цели И',label:'2.6'},{group:'Цели И',label:'3.6'},{group:'Цели И',label:'4.23'}],ot:['POC'],confirmations:['Объёмы','МакД'],
+ comment:'Демонстрационная сделка',initialRisk:50,currentRisk:50,avgPrice:57,totalVolume:0.01,remainingVolume:0.01,exits:[],stops:[],violations:[]};
+ state.trades.push(t);save();renderOpen();alert('Демо-сделка добавлена.')
+}
+$('#clearJournal').onclick=()=>{
+ if(confirm('Удалить все сделки? Текущий баланс и история операций с депозитом сохранятся.')){
+  state.balanceEvents=state.balanceEvents||[];
+  state.balanceEvents.push({id:'BE-RESET-'+Date.now(),type:'journal_reset',amount:0,comment:'Журнал сделок очищен, баланс сохранён',balance_before:state.balance,balance_after:state.balance,at:nowIso()});
+  state.trades=[];
+  state.dayStartBalance=Number(state.balance)||0;state.dayKey=appDateKey();
+  save();renderOpen();renderDone();renderSettings();updateHeader();alert('Сделки удалены. Баланс сохранён.')
+ }
+}
+$('#resetAll').onclick=()=>{if(confirm('Удалить все локальные данные?')){localStorage.removeItem('tradingOS_v3');location.reload()}}
+
+applyBacktestDateTimeMasks();
+setTheme(state.theme||'light');
+$('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
+$('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';$('#volumeRange3').value='0.01';
+syncMethodString();renderStaticChips();renderStrategy();loadInstrumentDraft(activeInstrument);updateInstrumentPriceUI();updateHeader();updateStorageStatus();calcRisk();
+</script>
+</body>
+</html>
