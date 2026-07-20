@@ -1961,12 +1961,6 @@ function rangeGridSuggestedExitVolume(t,label){
   .reduce((sum,exit)=>sum+Number(exit.volume||0),0);
  return Math.max(0,Number(rangeGridAllocation(t)[index]||0)-already)
 }
-function allocateRangeGridExitVolumes(total,exits,step){
- const count=(exits||[]).length;
- if(!count||count>3)return null;
- const weights=count===1?[100]:count===2?[60,40]:[60,20,20];
- return allocateExitVolumes(total,weights.map(volume=>({volume})),step)
-}
 function isWolfAutoExit(exit){return exit&&exit.group==='Цели Вульфа'&&['Т4','Т6'].includes(exit.label)}
 function allocateWolfExitVolumes(total,exits,step){
  const groups={Т4:[],Т6:[]};
@@ -2031,11 +2025,11 @@ function recalculateImpulseExecution(t){
  t.initialRisk=initialRisk;
  const wolfAllocated=allocateWolfExitVolumes(t.totalVolume,t.exits||[],step);
  const impulseAllocated=(isImpulseStrategy(t)||isRangeImpulseTrade(t))?allocateImpulseExitVolumes(t.totalVolume,t.exits||[],step):null;
- const rangeGridAllocated=isRangeGridTrade(t)?allocateRangeGridExitVolumes(t.totalVolume,t.exits||[],step):null;
  let remaining=t.totalVolume;
  (t.exits||[]).forEach((exit,index)=>{
   const requested=Math.max(0,Number(exit.requestedVolume!=null?exit.requestedVolume:exit.volume||0));
-  const desired=rangeGridAllocated?rangeGridAllocated[index]:(impulseAllocated?impulseAllocated[index]:(isWolfAutoExit(exit)?wolfAllocated[index]:requested));
+  // Grid targets suggest 60/20/20 at entry time, but the journal must retain the actual closed volume.
+  const desired=impulseAllocated?impulseAllocated[index]:(isWolfAutoExit(exit)?wolfAllocated[index]:requested);
   const volume=Math.min(remaining,desired||0);
   exit.requestedVolume=requested;
   exit.volume=volume;
@@ -2300,7 +2294,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='58';
+const APP_VERSION='59';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
