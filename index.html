@@ -2112,6 +2112,8 @@ function isImpulseEntryReview(t){
  const methods=Array.isArray(t&&t.methods)?t.methods:String((t&&t.method)||'').split(' + ').filter(Boolean);
  return methods.includes('И')
 }
+function usesAutomaticLevelReview(t){return isImpulseEntryReview(t)||isRangeGridTrade(t)}
+function levelReviewTitle(t){return isImpulseEntryReview(t)?'Уровни И':isRangeGridTrade(t)?'Уровни диапазона':'Проверка входов'}
 function entryLevelReview(t,level){
  const entry=entryAtImpulseLevel(t,level);
  const planned=!!entry;
@@ -2123,10 +2125,11 @@ function entryLevelReview(t,level){
  if(legacy==='executed')return {planned,reviewed:true,priceReached:'yes',entryExecuted:planned};
  if(legacy==='not_reached')return {planned,reviewed:true,priceReached:'no',entryExecuted:false};
  if(legacy==='reached')return {planned,reviewed:true,priceReached:'yes',entryExecuted:false};
- return {planned,reviewed:false,priceReached:'',entryExecuted:planned&&entryStatus(entry)==='executed'}
+ const entryExecuted=planned&&entryStatus(entry)==='executed';
+ return {planned,reviewed:entryExecuted,priceReached:entryExecuted?'yes':'',entryExecuted}
 }
 function rangeEntryOutcome(t,level){
- if(!isImpulseEntryReview(t)){
+ if(!usesAutomaticLevelReview(t)){
   const saved=t.entryLevelOutcomes&&t.entryLevelOutcomes[level];
   if(saved==='executed'||saved==='not_reached')return saved;
   const entry=entryAtImpulseLevel(t,level);
@@ -2147,44 +2150,47 @@ function entryLevelReviewLabel(t,level){
 }
 function rangeEntryReviewText(t){
  if(!isRangeEntryReviewAvailable(t))return '';
- const impulse=isImpulseEntryReview(t);
- const lines=rangeEntryReviewLevels(t).map(level=>`${level}: ${impulse?entryLevelReviewLabel(t,level):(rangeEntryOutcome(t,level)==='executed'?'Вход исполнен':'Входа не было · цена не дошла')}`);
+ const automatic=usesAutomaticLevelReview(t);
+ const lines=rangeEntryReviewLevels(t).map(level=>`${level}: ${automatic?entryLevelReviewLabel(t,level):(rangeEntryOutcome(t,level)==='executed'?'Вход исполнен':'Входа не было · цена не дошла')}`);
  const corrected=t.entryExecutionCorrection?`<br><span class="mini-note">Математика пересчитана по фактическому объёму: ${Number(t.entryExecutionCorrection.actualVolume||0).toFixed(2)} контр.</span>`:'';
- return `<p><b>${impulse?'Уровни И':'Проверка входов'}:</b><br>${lines.join('<br>')}${corrected}</p>`
+ return `<p><b>${automatic?levelReviewTitle(t):'Проверка входов'}:</b><br>${lines.join('<br>')}${corrected}</p>`
 }
 function showRangeEntryReview(id){
  const t=getTrade(id);
  if(!isRangeEntryReviewAvailable(t))return;
  const levels=rangeEntryReviewLevels(t);
- const impulse=isImpulseEntryReview(t);
+ const automatic=usesAutomaticLevelReview(t);
  const fields=levels.map((level,index)=>{
   const entry=entryAtImpulseLevel(t,level);
-  if(impulse){
+  if(automatic){
    const review=entryLevelReview(t,level);
-   if(entry){
-    const value=!review.reviewed?'':review.entryExecuted?'executed':'not_reached';
-    return `<div class="field"><label>Уровень ${level} · плановый вход</label><select id="mRangeEntry${index}"><option value="" ${value===''?'selected':''}>Не отмечено</option><option value="executed" ${value==='executed'?'selected':''}>Вход исполнен</option><option value="not_reached" ${value==='not_reached'?'selected':''}>Цена не дошла</option></select></div>`
+   if(review.entryExecuted){
+    return `<div class="field"><label>Уровень ${level} · ${entry?'плановый вход':'вход'}</label><div class="alert good">Вход исполнен</div></div>`
    }
    const value=!review.reviewed?'':review.priceReached==='yes'?'reached':'not_reached';
-   return `<div class="field"><label>Уровень ${level} · вход не планировался</label><select id="mRangeEntry${index}"><option value="" ${value===''?'selected':''}>Не отмечено</option><option value="reached" ${value==='reached'?'selected':''}>Цена дошла</option><option value="not_reached" ${value==='not_reached'?'selected':''}>Цена не дошла</option></select></div>`
+   const label=entry?'плановый вход не исполнен':'вход не планировался';
+   return `<div class="field"><label>Уровень ${level} · ${label}</label><select id="mRangeEntry${index}"><option value="" ${value===''?'selected':''}>Не отмечено</option><option value="reached" ${value==='reached'?'selected':''}>Цена дошла</option><option value="not_reached" ${value==='not_reached'?'selected':''}>Цена не дошла</option></select></div>`
   }
   const outcome=rangeEntryOutcome(t,level);
   const missing=entry?'':' <span class="mini-note">уровень не был записан при создании сделки</span>';
   return `<div class="field"><label>Вход ${level}${missing}</label><select id="mRangeEntry${index}"><option value="executed" ${outcome==='executed'?'selected':''}>Вход состоялся</option><option value="not_reached" ${outcome==='not_reached'?'selected':''}>Входа не было · цена не дошла</option></select></div>`
  }).join('');
- const title=impulse?'Уровни И':'Проверка входов';
- const note=impulse?'Заполни все три уровня. Исполненный плановый вход учитывается в объёме, риске, прибыли и R. Уровень без планового входа сохраняется только для статистики движения цены.':'Заполняется после сделки. «Вход состоялся» учитывается в объёме, прибыли и R. «Входа не было» исключается из математики и фиксируется для статистики уровней.';
+ const title=automatic?levelReviewTitle(t):'Проверка входов';
+ const note=automatic?'Исполненные в открытом журнале входы уже зафиксированы и входят в объём, риск, прибыль и R. Для остальных уровней отметь только факт: цена дошла или не дошла. Этот ответ не добавляет новый вход в математику.':'Заполняется после сделки. «Вход состоялся» учитывается в объёме, прибыли и R. «Входа не было» исключается из математики и фиксируется для статистики уровней.';
  modal(title,`<div class="mini-note" style="margin-bottom:9px">${note}</div>${fields}<button class="primary" id="mSaveRangeEntries">Сохранить</button>`);
  $('#mSaveRangeEntries').onclick=()=>{
   const values={};
-  for(let index=0;index<levels.length;index++)values[levels[index]]=$('#mRangeEntry'+index).value;
-  if(impulse&&levels.some(level=>!values[level]))return alert('Отметь, дошла ли цена до каждого уровня И.');
+  for(let index=0;index<levels.length;index++){
+   const field=$('#mRangeEntry'+index);
+   values[levels[index]]=field?field.value:'';
+  }
+  if(automatic&&levels.some(level=>!entryLevelReview(t,level).entryExecuted&&!values[level]))return alert(`Отметь, дошла ли цена до каждого уровня: ${levels.filter(level=>!entryLevelReview(t,level).entryExecuted&&!values[level]).join(', ')}.`);
   const outcomes={},reviews={};
   for(const level of levels){
    const entry=entryAtImpulseLevel(t,level);
-   if(impulse){
+   if(automatic){
     const value=values[level];
-    const entryExecuted=!!entry&&value==='executed';
+    const entryExecuted=entryLevelReview(t,level).entryExecuted;
     const priceReached=entryExecuted||value==='reached'?'yes':'no';
     reviews[level]={priceReached,entryExecuted};
     outcomes[level]=entryExecuted?'executed':priceReached==='yes'?'reached':'not_reached';
@@ -2215,7 +2221,7 @@ function showRangeEntryReview(id){
    }
   }
   t.entryLevelOutcomes=outcomes;
-  if(impulse)t.entryLevelReviews=reviews;
+  if(automatic)t.entryLevelReviews=reviews;
   t.entryLevelReviewAt=nowIso();
   const result=recalculateImpulseExecution(t);
   if(!result.ok)return alert(result.message);
@@ -2254,7 +2260,7 @@ function showDetails(id){
  <div class="actions">
   ${(t.exits||[]).length?'<button class="secondary" id="mUndoExit">Отменить последний выход</button>':''}
   ${(t.stops||[]).length?'<button class="secondary" id="mUndoStop">Отменить последний стоп</button>':''}
-  ${isRangeEntryReviewAvailable(t)?`<button class="secondary wide" id="mRangeEntryReview">${isImpulseEntryReview(t)?'Уровни И':'Проверка входов'}</button>`:''}
+  ${isRangeEntryReviewAvailable(t)?`<button class="secondary wide" id="mRangeEntryReview">${usesAutomaticLevelReview(t)?levelReviewTitle(t):'Проверка входов'}</button>`:''}
   ${Number(t.remainingVolume||0)<=0.0001?'<button class="secondary wide" id="mExecutionReview">Оценка исполнения · необязательно</button>':''}
   <button class="secondary wide" id="mDeleteTrade">Удалить сделку</button>
  </div></div>`);
@@ -2266,7 +2272,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='56';
+const APP_VERSION='57';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2483,8 +2489,8 @@ function exportAnalysisFiles(){
   (t.entries||[]).forEach((e,i)=>entries.push({...ctx,entry_no:i+1,price:e.price,volume:e.volume,risk_share:e.riskShare,max_allowed_volume:e.maxAllowedVolume??'',level:e.level||'',execution:e.execution||'',execution_status:entryStatus(e),execution_reason:e.notExecutedReason||'',counts_in_math:entryStatus(e)==='executed',counts_in_reserved_risk:entryStatus(e)!=='not_executed',created_at:t.createdAt||''}));
   rangeEntryReviewLevels(t).forEach((level,index)=>{
    const entry=entryAtImpulseLevel(t,level);
-   const impulse=isImpulseEntryReview(t);
-   const review=impulse?entryLevelReview(t,level):{planned:!!entry,entryExecuted:rangeEntryOutcome(t,level)==='executed',priceReached:rangeEntryOutcome(t,level)==='executed'?'yes':'no',reviewed:!!(t.entryLevelOutcomes&&t.entryLevelOutcomes[level])};
+   const automatic=usesAutomaticLevelReview(t);
+   const review=automatic?entryLevelReview(t,level):{planned:!!entry,entryExecuted:rangeEntryOutcome(t,level)==='executed',priceReached:rangeEntryOutcome(t,level)==='executed'?'yes':'no',reviewed:!!(t.entryLevelOutcomes&&t.entryLevelOutcomes[level])};
    entryOutcomes.push({...ctx,entry_level_no:index+1,level,outcome:rangeEntryOutcome(t,level),entry_recorded:!!entry,entry_planned:review.planned,entry_executed:review.entryExecuted,price_reached:review.priceReached,reviewed:review.reviewed,counts_in_math:review.entryExecuted,reviewed_at:t.entryLevelReviewAt||''})
   });
   (t.exits||[]).forEach((e,i)=>exits.push({...ctx,...exitReportMeta(e,t),exit_no:i+1,reason:e.reason||'',group:e.group||'',label:e.label||'',price:e.price,volume:e.volume,requested_volume:e.requestedVolume??e.volume,excluded_volume:e.excludedVolume??0,calculation_status:e.calculationStatus||'counted',pnl:e.pnl,at:e.at||'',stop_at_exit:e.stopPriceAtExit??e.stopAtExit??'',remaining_after:e.remainingAfter??'',comment:e.comment||''}));
