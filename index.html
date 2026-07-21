@@ -401,13 +401,28 @@ input,select,textarea,button{min-height:44px}
 <section class="screen" data-screen="settings">
   <div class="section-title"><h2>Настройки</h2><small>счёт и архитектура</small></div>
   <div class="card">
+    <h3>Реальный счёт</h3>
     <div class="row">
-      <div class="field"><label>Текущий баланс, USD</label><input id="setBalance" type="number" step="0.01"></div>
-      <div class="field"><label>Риск на сделку, %</label><input id="setRisk" type="number" step="0.1" min="0" max="100"></div>
-      <div class="field"><label>Дневной лимит, %</label><input id="setDayRisk" type="number" step="0.1" min="0" max="100"><div class="mini-note">Считается от баланса на начало текущего дня.</div></div>
+      <div class="field"><label>Текущий баланс, USD</label><input id="setRealBalance" type="number" step="0.01"></div>
+      <div class="field"><label>Риск на сделку, %</label><input id="setRealRisk" type="number" step="0.1" min="0" max="100"></div>
+      <div class="field"><label>Дневной лимит, %</label><input id="setRealDayRisk" type="number" step="0.1" min="0" max="100"><div class="mini-note">Только для Real.</div></div>
       <div class="field"><label>Время сделок</label><select id="setTimezone" disabled><option value="Europe/Moscow">МСК (Europe/Moscow)</option></select></div>
     </div>
-    <button class="primary" id="saveSettings">Сохранить настройки</button>
+    <button class="primary" id="saveRealSettings">Сохранить Real</button>
+  </div>
+
+  <div class="card">
+    <h3>Backtest</h3>
+    <div class="row">
+      <div class="field"><label>Баланс Backtest, USD</label><input id="setBacktestBalance" type="number" step="0.01"></div>
+      <div class="field"><label>Риск на сделку, %</label><input id="setBacktestRisk" type="number" step="0.1" min="0" max="100"></div>
+      <div class="field"><label>Дневной лимит, %</label><input id="setBacktestDayRisk" type="number" step="0.1" min="0" max="100"><div class="mini-note">Только для Backtest.</div></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="saveBacktestSettings">Сохранить Backtest</button>
+      <button class="secondary" id="resetBacktestAccount">Обнулить Backtest</button>
+    </div>
+    <div class="mini-note">Обнуление не удаляет сделки, журнал и экспорт. Оно сбрасывает только тестовый баланс и дневной риск.</div>
   </div>
 
   <div class="card">
@@ -499,7 +514,7 @@ const nowIso=()=>new Date().toISOString();
 const uid=()=> 'TR-'+new Date().toISOString().slice(2,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
 
 const MOSCOW_TIME_ZONE='Europe/Moscow';
-const defaults={theme:'light',balance:1000,riskPct:1,dayRiskPct:3,timezone:MOSCOW_TIME_ZONE,mode:'Real',dayStartBalance:1000,dayKey:'',balanceEvents:[],trades:[],instrumentDrafts:{},lastSavedAt:'',lastBackupAt:''};
+const defaults={theme:'light',balance:1000,riskPct:1,dayRiskPct:3,timezone:MOSCOW_TIME_ZONE,mode:'Real',dayStartBalance:1000,dayKey:'',balanceEvents:[],realAccount:null,backtestAccount:null,legacyBalanceEvents:[],trades:[],instrumentDrafts:{},lastSavedAt:'',lastBackupAt:''};
 function cloneDefaults(){return JSON.parse(JSON.stringify(defaults))}
 function loadState(){
  const raw=localStorage.getItem('tradingOS_v3');
@@ -536,7 +551,7 @@ function formatAppDateTime(value,timeZone=appTimeZone()){
  if(timeZone)options.timeZone=timeZone;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=39;
+const APP_SCHEMA_VERSION=40;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -588,7 +603,46 @@ if((state.schemaVersion||0)<37){
  state.schemaVersion=37;
  localStorage.setItem('tradingOS_v3',JSON.stringify(state));
 }
+function normalizedAccount(source,fallbackBalance=0,fallbackRisk=1,fallbackDayRisk=3){
+ const account=source&&typeof source==='object'?source:{};
+ const balance=Math.max(0,Math.round(Number((account.balance??fallbackBalance)||0)*100)/100);
+ return {
+  balance,
+  riskPct:Math.max(0,Number(account.riskPct??fallbackRisk)||0),
+  dayRiskPct:Math.max(0,Number(account.dayRiskPct??fallbackDayRisk)||0),
+  dayStartBalance:Math.max(0,Math.round(Number(account.dayStartBalance??balance)*100)/100),
+  dayKey:account.dayKey||'',
+  balanceEvents:Array.isArray(account.balanceEvents)?account.balanceEvents:[]
+ }
+}
+if((state.schemaVersion||0)<40){
+ const legacyEvents=Array.isArray(state.balanceEvents)?JSON.parse(JSON.stringify(state.balanceEvents)):[];
+ const legacyBalance=Math.max(0,Math.round(Number(state.balance||0)*100)/100);
+ const legacyRisk=Math.max(0,Number(state.riskPct)||0);
+ const legacyDayRisk=Math.max(0,Number(state.dayRiskPct)||0);
+ // A legacy balance can contain both modes. Keep all source events intact and start separate ledgers from this snapshot.
+ state.legacyBalanceEvents=legacyEvents;
+ state.realAccount=normalizedAccount(null,legacyBalance,legacyRisk,legacyDayRisk);
+ state.backtestAccount=normalizedAccount(null,legacyBalance,legacyRisk,legacyDayRisk);
+ state.realAccount.dayKey=appDateKey();
+ state.realAccount.dayStartBalance=legacyBalance;
+ state.backtestAccount.dayKey='';
+ state.backtestAccount.dayStartBalance=legacyBalance;
+ (state.trades||[]).forEach(t=>{ if(t.accountBalanceApplied==null)t.accountBalanceApplied=false; });
+ state.schemaVersion=40;
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+}
 let form={mode:state.mode||'Real',direction:'Long',method:'СЕРЧ',methods:['СЕРЧ'],targets:[],ot:[],conf:[],doneView:'pending'};
+function accountForMode(mode='Real'){
+ const key=mode==='Backtest'?'backtestAccount':'realAccount';
+ const fallbackBalance=Number(state.balance||0);
+ const fallbackRisk=Number(state.riskPct||1);
+ const fallbackDayRisk=Number(state.dayRiskPct||3);
+ state[key]=normalizedAccount(state[key],fallbackBalance,fallbackRisk,fallbackDayRisk);
+ return state[key]
+}
+function accountModeForTrade(t){return t&&t.mode==='Backtest'?'Backtest':'Real'}
+function accountBalance(mode=activeRiskMode()){return accountForMode(mode).balance}
 
 const specs={
  GOLD:{digits:2,contract:100,step:.01,example:'4026.00'},
@@ -729,9 +783,10 @@ const rules={
 };
 function updateDay(){
  const key=appDateKey();
- if(state.dayKey!==key){
-  state.dayKey=key;
-  state.dayStartBalance=Math.round((Number(state.balance)||0)*100)/100;
+ const account=accountForMode('Real');
+ if(account.dayKey!==key){
+  account.dayKey=key;
+  account.dayStartBalance=Math.round(Number(account.balance||0)*100)/100;
   return true
  }
  return false
@@ -785,7 +840,7 @@ function closedPositivePnlForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode(
   .filter(t=>{
    if(!sameRiskMode(t,mode))return false;
    const closeKey=t.mode==='Backtest'?tradeRiskDateKey(t):(t.closedAt?dateKeyInTimeZone(t.closedAt,tradeTimeZone(t)):'');
-   return closeKey===dayKey&&t.balanceApplied
+   return closeKey===dayKey&&t.accountBalanceApplied
   })
   .reduce((s,t)=>s+Math.max(0,Number(t.pnl||0)),0)
 }
@@ -800,10 +855,10 @@ function occupiedRiskForDay(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
  }).reduce((s,t)=>s+reservedRiskForTrade(t),0)
 }
 function backtestDayStartBalance(dayKey){
- const current=Math.round(Number(state.balance||0)*100)/100;
+ const current=Math.round(Number(accountForMode('Backtest').balance||0)*100)/100;
  if(!dayKey)return current;
  const appliedFromSelectedDay=(state.trades||[])
-  .filter(t=>t.mode==='Backtest'&&t.balanceApplied&&t.status!=='not_triggered'&&tradeRiskDateKey(t)>=dayKey)
+  .filter(t=>t.mode==='Backtest'&&t.accountBalanceApplied&&t.status!=='not_triggered'&&tradeRiskDateKey(t)>=dayKey)
   .reduce((sum,t)=>sum+Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0),0);
  return Math.max(0,Math.round((current-appliedFromSelectedDay)*100)/100)
 }
@@ -814,33 +869,36 @@ function dayRiskBase(dayKey=activeRiskDateKey(),mode=activeRiskMode()){
   const base=backtestDayStartBalance(dayKey);
   return Math.max(0,Math.round((base+closedPositivePnlForDay(dayKey,mode))*100)/100)
  }
- const storedBase=Number(state.dayStartBalance||0);
+ const account=accountForMode('Real');
+ const storedBase=Number(account.dayStartBalance||0);
  const closedProfit=closedPositivePnlForDay(dayKey,mode);
  const storedComputed=Math.round((storedBase+closedProfit)*100)/100;
- const balanceComputed=Math.round((Number(state.balance||0)+realizedLossForDay(dayKey,mode))*100)/100;
+ const balanceComputed=Math.round((Number(account.balance||0)+realizedLossForDay(dayKey,mode))*100)/100;
  return Math.max(0,storedComputed,balanceComputed)
 }
-function rebaseBalanceEvents(){
- state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
- const total=state.balanceEvents.reduce((s,e)=>s+Number(e.amount||0),0);
- let running=Math.round((Number(state.balance||0)-total)*100)/100;
- state.balanceEvents.forEach(e=>{
+function rebaseBalanceEvents(mode='Real'){
+ const account=accountForMode(mode);
+ account.balanceEvents=Array.isArray(account.balanceEvents)?account.balanceEvents:[];
+ const total=account.balanceEvents.reduce((s,e)=>s+Number(e.amount||0),0);
+ let running=Math.round((Number(account.balance||0)-total)*100)/100;
+ account.balanceEvents.forEach(e=>{
   e.balance_before=running;
   running=Math.round((running+Number(e.amount||0))*100)/100;
   e.balance_after=running
  })
 }
-function addBalanceEvent(type,amount,meta={}){
- updateDay();
- const before=Number(state.balance||0);
+function addBalanceEvent(type,amount,meta={},mode='Real'){
+ if(mode==='Real')updateDay();
+ const account=accountForMode(mode);
+ const before=Number(account.balance||0);
  const delta=Math.round(Number(amount||0)*100)/100;
  const after=Math.round((before+delta)*100)/100;
- state.balance=after;
- if(['deposit','withdraw','manual_adjustment'].includes(type)){
-  state.dayStartBalance=Math.round((Number(state.dayStartBalance||0)+delta)*100)/100
+ account.balance=after;
+ if(mode==='Real'&&['deposit','withdraw','manual_adjustment'].includes(type)){
+  account.dayStartBalance=Math.round((Number(account.dayStartBalance||0)+delta)*100)/100
  }
- state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
- state.balanceEvents.push({
+ account.balanceEvents=Array.isArray(account.balanceEvents)?account.balanceEvents:[];
+ account.balanceEvents.push({
   id:meta.id||'BE-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
   type,
   amount:delta,
@@ -852,19 +910,21 @@ function addBalanceEvent(type,amount,meta={}){
  });
  return after
 }
-function removeTradeBalanceEvent(tradeId){
- state.balanceEvents=(state.balanceEvents||[]).filter(e=>!(e.type==='trade_close'&&e.trade_id===tradeId));
- rebaseBalanceEvents()
+function removeTradeBalanceEvent(tradeId,mode='Real'){
+ const account=accountForMode(mode);
+ account.balanceEvents=(account.balanceEvents||[]).filter(e=>!(e.type==='trade_close'&&e.trade_id===tradeId));
+ rebaseBalanceEvents(mode)
 }
 function occupiedRisk(){return occupiedRiskForDay(appDateKey(),'Real')}
-function dayLimit(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return dayRiskBase(dayKey,mode)*state.dayRiskPct/100}
+function dayLimit(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return dayRiskBase(dayKey,mode)*accountForMode(mode).dayRiskPct/100}
 function dayRemaining(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return Math.max(0,dayLimit(dayKey,mode)-realizedLossForDay(dayKey,mode)-occupiedRiskForDay(dayKey,mode))}
-function tradeAllowed(dayKey=activeRiskDateKey(),mode=activeRiskMode()){return Math.min(state.balance*state.riskPct/100,dayRemaining(dayKey,mode))}
+function tradeAllowed(dayKey=activeRiskDateKey(),mode=activeRiskMode()){const account=accountForMode(mode);return Math.min(account.balance*account.riskPct/100,dayRemaining(dayKey,mode))}
 function updateHeader(){
  updateDay();
  const key=activeRiskDateKey();
- $('#kBalance').textContent=money(state.balance);
- $('#kRisk').textContent=money(state.balance*state.riskPct/100);
+ const mode=activeRiskMode(),account=accountForMode(mode);
+ $('#kBalance').textContent=money(account.balance);
+ $('#kRisk').textContent=money(account.balance*account.riskPct/100);
  $('#kDay').textContent=money(dayRemaining(key))+' / '+money(dayLimit(key));
  $('#kOpen').textContent=openTrades().length;
 }
@@ -1740,8 +1800,10 @@ function showClose(id){
     t.status='pending';
    }
    if(!t.balanceApplied){
-    addBalanceEvent('trade_close',t.pnl,{id:'BE-TRADE-'+t.id,trade_id:t.id,comment:`Закрытие ${t.instrument} ${t.direction}`,at:t.closedAt});
+    const mode=accountModeForTrade(t);
+    addBalanceEvent('trade_close',t.pnl,{id:'BE-TRADE-'+t.id,trade_id:t.id,comment:`Закрытие ${t.instrument} ${t.direction}`,at:t.closedAt},mode);
     t.balanceApplied=true;
+    t.accountBalanceApplied=true;
     t.appliedPnl=t.pnl;
    }
   }
@@ -1846,11 +1908,13 @@ function showFinalize(id){
  }
 }
 function reverseAppliedTradeBalance(t){
- if(!t.balanceApplied)return;
+ if(!t.balanceApplied||!t.accountBalanceApplied)return;
  const applied=Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0);
- state.balance=Math.round((Number(state.balance||0)-applied)*100)/100;
- removeTradeBalanceEvent(t.id);
+ const mode=accountModeForTrade(t),account=accountForMode(mode);
+ account.balance=Math.round((Number(account.balance||0)-applied)*100)/100;
+ removeTradeBalanceEvent(t.id,mode);
  t.balanceApplied=false;
+ t.accountBalanceApplied=false;
  t.appliedPnl=0
 }
 function entryStatus(e){
@@ -2058,16 +2122,18 @@ function recalculateImpulseExecution(t){
 function updateAppliedTradeBalance(t,previousPnl){
  const corrected=Math.round(Number(t.pnl||0)*100)/100;
  const previous=Math.round(Number(previousPnl||0)*100)/100;
- const event=(state.balanceEvents||[]).find(e=>e.type==='trade_close'&&e.trade_id===t.id);
+ const mode=accountModeForTrade(t),account=accountForMode(mode);
+ const event=(account.balanceEvents||[]).find(e=>e.type==='trade_close'&&e.trade_id===t.id);
  if(!event){
-  addBalanceEvent('trade_close',corrected,{id:'BE-TRADE-'+t.id,trade_id:t.id,comment:`Закрытие ${t.instrument} ${t.direction} · автокоррекция входов`,at:t.closedAt||nowIso()});
+  addBalanceEvent('trade_close',corrected,{id:'BE-TRADE-'+t.id,trade_id:t.id,comment:`Закрытие ${t.instrument} ${t.direction} · автокоррекция входов`,at:t.closedAt||nowIso()},mode);
  }else{
   event.amount=corrected;
   event.comment=`Закрытие ${t.instrument} ${t.direction} · автокоррекция входов`;
-  state.balance=Math.round((Number(state.balance||0)+corrected-previous)*100)/100;
-  rebaseBalanceEvents()
+  account.balance=Math.round((Number(account.balance||0)+corrected-previous)*100)/100;
+  rebaseBalanceEvents(mode)
  }
  t.balanceApplied=true;
+ t.accountBalanceApplied=true;
  t.appliedPnl=corrected
 }
 function rebuildTradeState(t){
@@ -2294,7 +2360,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='59';
+const APP_VERSION='60';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2520,7 +2586,10 @@ function exportAnalysisFiles(){
   (t.ot||[]).forEach(v=>tradeOt.push({...ctx,ot:v}));
   (t.confirmations||[]).forEach(v=>tradeConf.push({...ctx,confirmation:v}));
  });
- const balance=(state.balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''}));
+ const modeByTrade=new Map((state.trades||[]).map(t=>[t.id,accountModeForTrade(t)]));
+ const legacyBalance=(state.legacyBalanceEvents||state.balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,account_mode:modeByTrade.get(e.trade_id)||'Real',legacy:true,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''}));
+ const accountBalance=['Real','Backtest'].flatMap(mode=>(accountForMode(mode).balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,account_mode:mode,legacy:false,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''})));
+ const balance=[...legacyBalance,...accountBalance];
  const stamp=fileStamp();
  const exportPayload={
   format:'TradingOSAnalysisExport',
@@ -2555,7 +2624,7 @@ function exportAnalysisFiles(){
 }
 
 function balanceOpsTotals(){
- return (state.balanceEvents||[]).reduce((acc,e)=>{
+ return (accountForMode('Real').balanceEvents||[]).reduce((acc,e)=>{
   if(e.type==='deposit')acc.deposit+=Number(e.amount||0);
   if(e.type==='withdraw')acc.withdraw+=Math.abs(Number(e.amount||0));
   return acc
@@ -2565,8 +2634,8 @@ function applyBalanceOperation(type){
  const amount=Math.round(num($('#balanceOpAmount').value)*100)/100;
  if(!amount||amount<=0)return alert('Введите сумму больше 0.');
  const delta=type==='deposit'?amount:-amount;
- if(Number(state.balance||0)+delta<0)return alert('Нельзя снять больше текущего баланса.');
- addBalanceEvent(type,delta,{comment:$('#balanceOpComment').value});
+ if(Number(accountForMode('Real').balance||0)+delta<0)return alert('Нельзя снять больше текущего баланса.');
+ addBalanceEvent(type,delta,{comment:$('#balanceOpComment').value},'Real');
  $('#balanceOpAmount').value='';
  $('#balanceOpComment').value='';
  save();renderSettings();updateHeader();calcRisk();
@@ -2574,36 +2643,50 @@ function applyBalanceOperation(type){
 }
 function renderSettings(){
  updateStorageStatus();
- $('#setBalance').value=moneyInput(state.balance);
+ const real=accountForMode('Real'),backtest=accountForMode('Backtest');
+ $('#setRealBalance').value=moneyInput(real.balance);
+ $('#setRealRisk').value=real.riskPct;
+ $('#setRealDayRisk').value=real.dayRiskPct;
+ $('#setBacktestBalance').value=moneyInput(backtest.balance);
+ $('#setBacktestRisk').value=backtest.riskPct;
+ $('#setBacktestDayRisk').value=backtest.dayRiskPct;
  const ops=balanceOpsTotals();
- const settingsDayKey=activeRiskDateKey();
- const settingsRiskMode=activeRiskMode();
- if($('#balanceOpsSummary'))$('#balanceOpsSummary').textContent=`Внесено: ${money(ops.deposit)} · Снято: ${money(ops.withdraw)}`;$('#setRisk').value=state.riskPct;$('#setDayRisk').value=state.dayRiskPct;$('#setTimezone').value=state.timezone||'local';
+ const settingsDayKey=appDateKey();
+ if($('#balanceOpsSummary'))$('#balanceOpsSummary').textContent=`Внесено: ${money(ops.deposit)} · Снято: ${money(ops.withdraw)}`;$('#setTimezone').value=state.timezone||'local';
  $('#instrumentSpecs').innerHTML=
- `<div class="alert good" style="margin-bottom:8px">База риска дня: ${money(dayRiskBase(settingsDayKey,settingsRiskMode))} · лимит: ${state.dayRiskPct}% = ${money(dayLimit(settingsDayKey,settingsRiskMode))} · занято: ${money(occupiedRiskForDay(settingsDayKey,settingsRiskMode)+realizedLossForDay(settingsDayKey,settingsRiskMode))}</div>`+
+ `<div class="alert good" style="margin-bottom:8px">Real: база дня ${money(dayRiskBase(settingsDayKey,'Real'))} · лимит ${money(dayLimit(settingsDayKey,'Real'))} · занято ${money(occupiedRiskForDay(settingsDayKey,'Real')+realizedLossForDay(settingsDayKey,'Real'))}</div>`+
+ `<div class="alert good" style="margin-bottom:8px">Backtest: баланс ${money(backtest.balance)} · риск сделки ${money(backtest.balance*backtest.riskPct/100)}</div>`+
  Object.entries(specs).map(([k,v])=>`<div class="metric" style="margin-bottom:6px"><span>${k}</span><b>${v.digits} знаков · шаг ${v.step} · контракт ${v.contract}</b></div>`).join('')
 }
-$('#setBalance').addEventListener('blur',()=>cleanMoneyField($('#setBalance')));
-$('#saveSettings').onclick=()=>{
- const old=state.balance,newBal=Math.round(num($('#setBalance').value)*100)/100;
- const newRisk=num($('#setRisk').value),newDayRisk=num($('#setDayRisk').value);
+['setRealBalance','setBacktestBalance'].forEach(id=>$('#'+id).addEventListener('blur',()=>cleanMoneyField($('#'+id))));
+function saveAccountSettings(mode){
+ const account=accountForMode(mode);
+ const prefix=mode==='Backtest'?'Backtest':'Real';
+ const old=account.balance,newBal=Math.round(num($('#set'+prefix+'Balance').value)*100)/100;
+ const newRisk=num($('#set'+prefix+'Risk').value),newDayRisk=num($('#set'+prefix+'DayRisk').value);
  if(newBal<0)return alert('Баланс не может быть отрицательным.');
  if(newRisk<0||newRisk>100)return alert('Риск на сделку должен быть от 0 до 100%.');
  if(newDayRisk<0||newDayRisk>100)return alert('Дневной лимит должен быть от 0 до 100%.');
  const balanceChanged=Math.abs(old-newBal)>0.000001;
- state.riskPct=newRisk;
- state.dayRiskPct=newDayRisk;
+ account.riskPct=newRisk;
+ account.dayRiskPct=newDayRisk;
  state.timezone=$('#setTimezone').value;
- if(state.dayKey!==appDateKey()){
-  state.dayKey=appDateKey();
-  state.dayStartBalance=Number(state.balance)||0
- }
+ if(mode==='Real'&&account.dayKey!==appDateKey()){account.dayKey=appDateKey();account.dayStartBalance=Number(account.balance)||0}
  if(balanceChanged){
-  addBalanceEvent('manual_adjustment',newBal-old,{comment:'Из настроек'})
+  addBalanceEvent('manual_adjustment',newBal-old,{comment:'Из настроек'},mode)
  }
  state.schemaVersion=APP_SCHEMA_VERSION;
  save();updateHeader();calcRisk();
- alert(`Настройки сохранены. Дневной лимит: ${money(dayLimit())}, остаток: ${money(dayRemaining())}.`)
+ alert(`${prefix} сохранён. Дневной лимит: ${money(dayLimit(activeRiskDateKey(),mode))}, остаток: ${money(dayRemaining(activeRiskDateKey(),mode))}.`)
+}
+$('#saveRealSettings').onclick=()=>saveAccountSettings('Real');
+$('#saveBacktestSettings').onclick=()=>saveAccountSettings('Backtest');
+$('#resetBacktestAccount').onclick=()=>{
+ if(!confirm('Обнулить только баланс и дневной риск Backtest? Сделки, журнал, экспорт и Real не изменятся.'))return;
+ const account=accountForMode('Backtest');
+ account.balance=0;account.dayStartBalance=0;account.dayKey='';account.balanceEvents=[];
+ (state.trades||[]).filter(t=>t.mode==='Backtest').forEach(t=>{t.accountBalanceApplied=false});
+ save();renderSettings();updateHeader();calcRisk();alert('Backtest обнулён. Укажи новый тестовый баланс в настройках.')
 }
 $('#depositBtn').onclick=()=>applyBalanceOperation('deposit');
 $('#withdrawBtn').onclick=()=>applyBalanceOperation('withdraw');
@@ -2621,10 +2704,11 @@ $('#addDemo').onclick=()=>{
 }
 $('#clearJournal').onclick=()=>{
  if(confirm('Удалить все сделки? Текущий баланс и история операций с депозитом сохранятся.')){
-  state.balanceEvents=state.balanceEvents||[];
-  state.balanceEvents.push({id:'BE-RESET-'+Date.now(),type:'journal_reset',amount:0,comment:'Журнал сделок очищен, баланс сохранён',balance_before:state.balance,balance_after:state.balance,at:nowIso()});
+  const real=accountForMode('Real');
+  real.balanceEvents=real.balanceEvents||[];
+  real.balanceEvents.push({id:'BE-RESET-'+Date.now(),type:'journal_reset',amount:0,comment:'Журнал сделок очищен, баланс сохранён',balance_before:real.balance,balance_after:real.balance,at:nowIso()});
   state.trades=[];
-  state.dayStartBalance=Number(state.balance)||0;state.dayKey=appDateKey();
+  real.dayStartBalance=Number(real.balance)||0;real.dayKey=appDateKey();
   save();renderOpen();renderDone();renderSettings();updateHeader();alert('Сделки удалены. Баланс сохранён.')
  }
 }
