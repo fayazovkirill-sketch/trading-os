@@ -551,7 +551,7 @@ function formatAppDateTime(value,timeZone=appTimeZone()){
  if(timeZone)options.timeZone=timeZone;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=41;
+const APP_SCHEMA_VERSION=42;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -634,6 +634,19 @@ if((state.schemaVersion||0)<40){
 }
 if((state.schemaVersion||0)<41){
  state.schemaVersion=41;
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+}
+if((state.schemaVersion||0)<42){
+ (state.trades||[]).forEach(t=>{
+  const beExits=(t.exits||[]).filter(e=>e.reason==='БУ'&&Number(e.pnl||0)!==0);
+  if(!beExits.length)return;
+  const previousPnl=Number(t.appliedPnl!=null?t.appliedPnl:t.pnl||0);
+  beExits.forEach(e=>{e.pnl=0});
+  t.pnl=(t.exits||[]).reduce((sum,e)=>sum+Number(e.pnl||0),0);
+  t.rResult=t.initialRisk?t.pnl/t.initialRisk:0;
+  if(t.accountBalanceApplied)updateAppliedTradeBalance(t,previousPnl)
+ });
+ state.schemaVersion=42;
  localStorage.setItem('tradingOS_v3',JSON.stringify(state));
 }
 let form={mode:state.mode||'Real',direction:'Long',method:'СЕРЧ',methods:['СЕРЧ'],targets:[],ot:[],conf:[],doneView:'pending'};
@@ -1652,7 +1665,7 @@ function showClose(id){
   if(!sel||!p||v<=0){el.className='alert warn';el.textContent='Выбери цель, введи цену и количество контрактов.';return 0}
   if(v>t.remainingVolume+.0001){el.className='alert bad';el.textContent=`Можно закрыть максимум ${t.remainingVolume.toFixed(2)} контр.`;return 0}
   const signed=t.direction==='Long'?(p-t.avgPrice):(t.avgPrice-p);
-  const pnl=signed*specs[t.instrument].contract*v;
+  const pnl=sel==='be'?0:signed*specs[t.instrument].contract*v;
   const eventName=sel==='stop'?'Стоп':sel==='be'?'Безубыток':'Выход';
   el.className=pnl<0?'alert bad':'alert good';
   el.textContent=`${eventName}: ${pnl<0?'убыток':'результат'} ${money(pnl)} · останется ${Math.max(0,t.remainingVolume-v).toFixed(2)} контр.`;
@@ -1756,7 +1769,7 @@ function showClose(id){
   else if(sel==='stop'){label='Стоп';reason='Стоп'}
   else if(sel==='be'){label='БУ';reason='БУ'}
   else {label='Ручной';reason='Ручное'}
-  const signed=t.direction==='Long'?(p-t.avgPrice):(t.avgPrice-p),pnl=signed*specs[t.instrument].contract*v;
+  const signed=t.direction==='Long'?(p-t.avgPrice):(t.avgPrice-p),pnl=reason==='БУ'?0:signed*specs[t.instrument].contract*v;
   const remainingAfter=floorStep(t.remainingVolume-v,instrumentStep);
   t.exits.push({
    price:p,
@@ -2090,7 +2103,7 @@ function recalculateImpulseExecution(t){
   exit.excludedVolume=Math.max(0,requested-volume);
   exit.calculationStatus=volume>0?'counted':'excluded_no_position';
   const signed=t.direction==='Long'?Number(exit.price)-avg:avg-Number(exit.price);
-  exit.pnl=signed*sp.contract*volume;
+  exit.pnl=exit.reason==='БУ'?0:signed*sp.contract*volume;
   exit.percentInitial=t.totalVolume?volume/t.totalVolume*100:0;
   remaining=Math.max(0,floorStep(remaining-volume,step));
   exit.remainingAfter=remaining;
@@ -2350,7 +2363,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='61';
+const APP_VERSION='62';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
