@@ -287,7 +287,7 @@ input,select,textarea,button{min-height:44px}
   <div class="card">
     <div class="row">
       <div class="field"><label>Количество входов</label><select id="entryCount"><option value="1">1 вход</option><option value="2">2 входа</option><option value="3">3 входа</option></select></div>
-      <div class="field price-field stop-price"><label>Цена первоначального стопа</label><input id="initialStop" inputmode="decimal" placeholder="56.000"></div>
+      <div class="field price-field stop-price"><label>Цена первоначального стопа</label><input id="initialStop" inputmode="decimal" placeholder="56.000"><label style="margin-top:7px">Уровень стопа · для статистики</label><select id="initialStopLevel"><option value="Ручной" selected>Ручной</option><option value="14">14</option><option value="0">0</option><option value="-15">-15</option><option value="-38">-38</option></select></div>
     </div>
     <div id="entry1" class="details">
       <summary>Вход 1 — основной</summary>
@@ -551,7 +551,7 @@ function formatAppDateTime(value,timeZone=appTimeZone()){
  if(timeZone)options.timeZone=timeZone;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=40;
+const APP_SCHEMA_VERSION=41;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -632,6 +632,10 @@ if((state.schemaVersion||0)<40){
  state.schemaVersion=40;
  localStorage.setItem('tradingOS_v3',JSON.stringify(state));
 }
+if((state.schemaVersion||0)<41){
+ state.schemaVersion=41;
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+}
 let form={mode:state.mode||'Real',direction:'Long',method:'СЕРЧ',methods:['СЕРЧ'],targets:[],ot:[],conf:[],doneView:'pending'};
 function accountForMode(mode='Real'){
  const key=mode==='Backtest'?'backtestAccount':'realAccount';
@@ -694,6 +698,7 @@ function saveInstrumentDraft(instrument){
   entryPrice2:$('#entryPrice2').value,
   entryPrice3:$('#entryPrice3').value,
   initialStop:$('#initialStop').value,
+  initialStopLevel:$('#initialStopLevel').value,
   riskShare1:$('#riskShare1').value,
   riskShare2:$('#riskShare2').value,
   riskShare3:$('#riskShare3').value,
@@ -717,7 +722,7 @@ function loadInstrumentDraft(instrument){
   $('#strategy').value='В.5';
   renderStrategy();
   $('#tfSetup').value='M15';$('#tfEntry').value='M5';
-  $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';
+  $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';$('#initialStopLevel').value='Ручной';
   $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
   $('#riskShare1').value='100';$('#riskShare2').value='50';$('#riskShare3').value='33';
   $('#entryCount').value='1';
@@ -751,6 +756,7 @@ function loadInstrumentDraft(instrument){
  $('#entryPrice2').value=d.entryPrice2||'';
  $('#entryPrice3').value=d.entryPrice3||'';
  $('#initialStop').value=d.initialStop||'';
+ $('#initialStopLevel').value=['Ручной','14','0','-15','-38'].includes(d.initialStopLevel)?d.initialStopLevel:'Ручной';
  $('#riskShare1').value=d.riskShare1||(isRangeGridEntry()?'100':'100');
  $('#riskShare2').value=d.riskShare2||(isRangeGridEntry()?'40':'50');
  $('#riskShare3').value=d.riskShare3||(isRangeGridEntry()?'40':'33');
@@ -1066,9 +1072,9 @@ function renderStrategy(){
 
  const hint=$('#impulseStopHint');
  if(isRangeGridEntry()){
-  hint.innerHTML='<b>Вход по сетке:</b> выбери 1, 2 или 3 уровня из 38 / 14 / -15. Стоп всегда за уровнем -38; точную цену стопа введи вручную.<br>Риск: 1 вход — 100%; 2 входа — 60% ближнему к стопу и 40% дальнему; 3 входа — 40% ближнему и по 30% остальным.';
- }else if(isImpulseEntry()){
-  hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.<br>При двух входах риск распределяется автоматически: 60% на ближний к стопу вход и 40% на дальний.';
+  hint.innerHTML='<b>Вход по сетке:</b> выбери 1, 2 или 3 уровня из 38 / 14 / -15. Стоп всегда за уровнем -38; точную цену стопа введи вручную.<br>Риск: 1 вход — 100%; 2 входа — 40% дальнему и 60% ближнему к стопу; 3 входа — 30% дальнему, 30% среднему и 40% ближнему.';
+}else if(isImpulseEntry()){
+  hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.<br>Риск распределяется автоматически: 40% на дальний и 60% на ближний к стопу вход.';
  }else{
   hint.textContent='Средняя цена считается взвешенно по объёмам. Для двух входов сумма долей риска должна быть 100%.';
  }
@@ -1101,9 +1107,9 @@ function toggleEntry2(resetShares=true){
  $('#entry2').classList.toggle('hidden',!two);
  $('#entry3').classList.toggle('hidden',!three);
  if(resetShares){
-  $('#riskShare1').value=three?(isRangeGridEntry()?30:34):two?((isImpulseEntry()||isRangeGridEntry())?60:50):100;
-  $('#riskShare2').value=three?(isRangeGridEntry()?30:33):((isImpulseEntry()||isRangeGridEntry())?40:50);
-  $('#riskShare3').value=three?(isRangeGridEntry()?40:33):33;
+  $('#riskShare1').value=three?30:two?40:100;
+  $('#riskShare2').value=three?30:two?60:0;
+  $('#riskShare3').value=three?40:0;
  }
  calcRisk()
 }
@@ -1119,22 +1125,6 @@ function syncAutomaticRiskShares(){
  const count=Number($('#entryCount').value||1);
  const inputs=[1,2,3].map(index=>$('#riskShare'+index));
  inputs.forEach(input=>{input.readOnly=false});
- if(isImpulseEntry()&&count===1){
-  inputs[0].value='100';
-  inputs[0].readOnly=true;
-  return;
- }
- if(isImpulseEntry()&&count===2){
-  const stop=num($('#initialStop').value);
-  const first=num($('#entryPrice1').value),second=num($('#entryPrice2').value);
-  const firstIsNear=!stop||!first||!second||Math.abs(first-stop)<=Math.abs(second-stop);
-  inputs[0].value=firstIsNear?'60':'40';
-  inputs[1].value=firstIsNear?'40':'60';
-  inputs[0].readOnly=true;
-  inputs[1].readOnly=true;
-  return;
- }
- if(!isRangeGridEntry())return;
  if(count===1){
   inputs[0].value='100';
   inputs[0].readOnly=true;
@@ -1143,10 +1133,10 @@ function syncAutomaticRiskShares(){
  const stop=num($('#initialStop').value);
  const entries=[1,2,3].filter(index=>index<=count).map(index=>({index,price:num($('#entryPrice'+index).value)}));
  const hasPrices=stop&&entries.every(entry=>entry.price);
- const ranked=hasPrices?entries.slice().sort((a,b)=>Math.abs(a.price-stop)-Math.abs(b.price-stop)||a.index-b.index):entries;
+ const ranked=hasPrices?entries.slice().sort((a,b)=>Math.abs(b.price-stop)-Math.abs(a.price-stop)||a.index-b.index):entries;
  const shares=count===2
-  ? (hasPrices?{[ranked[0].index]:60,[ranked[1].index]:40}:{1:60,2:40})
-  : (hasPrices?{[ranked[0].index]:40,[ranked[1].index]:30,[ranked[2].index]:30}:{1:30,2:30,3:40});
+  ? {[ranked[0].index]:40,[ranked[1].index]:60}
+  : {[ranked[0].index]:30,[ranked[1].index]:30,[ranked[2].index]:40};
  entries.forEach(entry=>{inputs[entry.index-1].value=String(shares[entry.index]);inputs[entry.index-1].readOnly=true});
 }
 function maxForEntry(price,share){
@@ -1272,7 +1262,7 @@ $('#instrument').onchange=()=>{
  loadInstrumentDraft(activeInstrument);
  calcRisk()
 };
-['tfSetup','tfEntry','gridLevel','entryLevel1','entryLevel2','entryLevel3','riskShare1','riskShare2','riskShare3','entryComment','isReentry','prevTradeId'].forEach(id=>{
+['tfSetup','tfEntry','gridLevel','entryLevel1','entryLevel2','entryLevel3','initialStopLevel','riskShare1','riskShare2','riskShare3','entryComment','isReentry','prevTradeId'].forEach(id=>{
  const el=$('#'+id);
  if(!el)return;
  const event=el.tagName==='TEXTAREA'||el.tagName==='INPUT'?'input':'change';
@@ -1353,7 +1343,7 @@ $('#saveTrade').onclick=()=>{
   id:uid(),app_version:APP_VERSION,status:'open',mode:form.mode,timezone:MOSCOW_TIME_ZONE,date:form.mode==='Real'?nowIso():$('#tradeDate').value+' '+$('#tradeTime').value,
   createdAt:nowIso(),updatedAt:nowIso(),instrument:$('#instrument').value,direction:form.direction,tfSetup:$('#tfSetup').value,tfEntry:$('#tfEntry').value,
   strategy:$('#strategy').value,subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:'',method:form.method,methods:[...form.methods],
-  initialStop:num($('#initialStop').value),currentStop:num($('#initialStop').value),
+  initialStop:num($('#initialStop').value),initialStopLevel:$('#initialStopLevel').value||'Ручной',currentStop:num($('#initialStop').value),
   entries:[
    {level:$('#entryLevel1').value,execution:$('#entryLevel1').value,price:num($('#entryPrice1').value),riskShare:num($('#riskShare1').value),volume:num($('#volume1').value),maxAllowedVolume:r.max1,executed:true,executedAt:nowIso()}
   ],
@@ -2337,7 +2327,7 @@ function showDetails(id){
  <p><b>Дата сделки:</b> ${formatTradeDate(t)}<br><b>Дата закрытия:</b> ${t.closedAt?formatEventDateTime(t.closedAt,t):'—'}</p>
  <p><b>Входы:</b><br>${entries}</p>
  <p><b>Средняя цена:</b> ${Number(t.avgPrice).toFixed(d)} · <b>Начальный объём:</b> ${Number(t.totalVolume).toFixed(2)} · <b>Остаток:</b> ${Number(t.remainingVolume).toFixed(2)}<br><b>Риск в резерве:</b> ${money(reservedRiskForTrade(t))}</p>
- <p><b>Первоначальный стоп:</b> ${Number(t.initialStop).toFixed(d)} · <b>Текущий стоп:</b> ${Number(t.currentStop).toFixed(d)}<br><b>${riskStatusLabel(t)}:</b> ${riskText(t.currentRisk)}</p>
+ <p><b>Первоначальный стоп:</b> ${Number(t.initialStop).toFixed(d)}${t.initialStopLevel?` · уровень ${t.initialStopLevel}`:''} · <b>Текущий стоп:</b> ${Number(t.currentStop).toFixed(d)}<br><b>${riskStatusLabel(t)}:</b> ${riskText(t.currentRisk)}</p>
  <p><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}<br><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}<br><b>Комментарий к входу:</b> ${t.comment||'—'}</p>
  <div class="exit-ledger"><b>История стопов</b>${stops}</div>
  <div class="exit-ledger"><b>Фактические выходы</b>${exits}</div>
@@ -2360,7 +2350,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='60';
+const APP_VERSION='61';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2558,6 +2548,7 @@ function tradeContextFields(t){
   direction:t.direction,
   strategy:t.strategy,
   subtype:t.subtype||'',
+  initial_stop_level:t.initialStopLevel||'',
   grid_entry_level:t.gridLevel||'',
   grid_target:gridTargetForLevel(t.gridLevel)||'',
   trade_date_key:meta.trade_date_key,
@@ -2569,7 +2560,7 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,current_stop:t.currentStop,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,initial_stop_level:t.initialStopLevel||'',current_stop:t.currentStop,stop_was_moved:(t.stops||[]).length>0,stop_exit_count:(t.exits||[]).filter(e=>e.reason==='Стоп').length,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
  }));
  const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];
  (state.trades||[]).forEach(t=>{
