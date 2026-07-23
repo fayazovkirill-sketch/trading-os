@@ -107,6 +107,17 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 .required-badge{font-size:9px;font-weight:850;color:var(--accent);background:var(--accent2);border-radius:999px;padding:4px 7px;margin-left:6px}
 .checkline{display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid var(--line);border-radius:11px;background:var(--bg);margin-bottom:8px;font-size:12px;font-weight:750}
 .checkline input{width:auto;margin:0;transform:scale(1.15)}
+.checklist-panel summary{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.checklist-status{font-size:10px;color:var(--bad);font-weight:850}
+.checklist-status.reviewed{color:var(--good)}
+.checklist-list{display:grid;gap:5px;margin-bottom:9px}
+.checklist-item{display:flex;align-items:center;gap:9px;min-height:36px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:11px;font-weight:750}
+.checklist-item input{width:auto;margin:0;transform:scale(1.1)}
+.checklist-readonly{display:grid;gap:4px;margin-top:8px}
+.checklist-answer{display:grid;grid-template-columns:1fr auto;gap:8px;padding:5px 7px;border-bottom:1px dashed var(--line);font-size:11px}
+.checklist-answer:last-child{border-bottom:0}
+.checklist-answer b.yes{color:var(--good)}.checklist-answer b.no{color:var(--muted)}
+.checklist-link{display:block;width:100%;border:0;background:transparent;color:var(--text);padding:5px 0 0;text-align:left;font-size:11px;font-weight:850}
 .chips button:disabled{opacity:.8;cursor:default}
 
 .price-field label{font-size:12px;font-weight:900}
@@ -374,6 +385,13 @@ input,select,textarea,button{min-height:44px}
     <div id="riskAlert" class="alert warn">Введите цену входа и стоп.</div>
   </div>
 
+  <details class="details checklist-panel" id="entryChecklistPanel">
+    <summary><span>ЧЕК-ЛИСТ</span><span class="checklist-status" id="entryChecklistStatus">Не проверено</span></summary>
+    <div class="inside">
+      <div class="checklist-list" id="entryChecklistItems"></div>
+      <button type="button" class="secondary" id="confirmEntryChecklist">Проверено</button>
+    </div>
+  </details>
 
   <div class="card">
     <div class="field"><label>ОТ</label><div class="chips multi" id="otChips"></div></div>
@@ -447,7 +465,7 @@ input,select,textarea,button{min-height:44px}
     </div>
     <input id="restoreFile" type="file" accept="application/json,.json" class="hidden">
     <div class="alert good" id="storageStatus">Данные сохраняются автоматически.</div>
-    <div class="mini-note">Полная копия содержит все сделки, входы, выходы, стопы, баланс, операции, настройки, черновики, ОТ и подтверждения.</div>
+    <div class="mini-note">Полная копия содержит все сделки, входы, выходы, стопы, баланс, операции, настройки, черновики, ОТ, подтверждения и ЧЕК-ЛИСТ.</div>
   </div>
 
   <details class="details" open>
@@ -551,7 +569,7 @@ function formatAppDateTime(value,timeZone=appTimeZone()){
  if(timeZone)options.timeZone=timeZone;
  return date.toLocaleString('ru-RU',options)
 }
-const APP_SCHEMA_VERSION=42;
+const APP_SCHEMA_VERSION=43;
 if((state.schemaVersion||0)<29){
   state.balance=Math.round((Number(state.balance)||0)*100)/100;
   state.balanceEvents=Array.isArray(state.balanceEvents)?state.balanceEvents:[];
@@ -649,7 +667,76 @@ if((state.schemaVersion||0)<42){
  state.schemaVersion=42;
  localStorage.setItem('tradingOS_v3',JSON.stringify(state));
 }
+if((state.schemaVersion||0)<43){
+ state.schemaVersion=43;
+ localStorage.setItem('tradingOS_v3',JSON.stringify(state));
+}
 let form={mode:state.mode||'Real',direction:'Long',method:'СЕРЧ',methods:['СЕРЧ'],targets:[],ot:[],conf:[],doneView:'pending'};
+const ENTRY_CHECKLIST_VERSION=1;
+const ENTRY_CHECKLIST_ITEMS=[
+ {code:'rr_1_3',label:'R:R ≥ 1:3'},
+ {code:'with_trend',label:'По тренду'},
+ {code:'vertical_volume_growth',label:'Рост вертикального объёма'},
+ {code:'grid_d',label:'Сетка D'},
+ {code:'grid_m60',label:'Сетка M60'},
+ {code:'reversal_pattern',label:'Разворотный паттерн'},
+ {code:'elliott_wave_direction',label:'По волне Эллиотта'},
+ {code:'opposing_limit_orders',label:'Встречные лимитные ордера'},
+ {code:'daily_volume_confirmation',label:'Объёмы D'},
+ {code:'weekly_volume_confirmation',label:'Объёмы W'},
+ {code:'wave_poc',label:'POC волны'},
+ {code:'pushing_bar',label:'Толкающий бар'},
+ {code:'buy_sell_zone',label:'Зона покупок/продаж'},
+ {code:'divergence',label:'Дивергенция'},
+ {code:'indicator_confirmation',label:'Подтверждение индикаторов'}
+];
+let entryChecklistReviewed=false;
+function emptyEntryChecklist(){
+ return Object.fromEntries(ENTRY_CHECKLIST_ITEMS.map(item=>[item.code,false]))
+}
+function readEntryChecklist(){
+ return Object.fromEntries(ENTRY_CHECKLIST_ITEMS.map(item=>[item.code,!!$(`[data-entry-check="${item.code}"]`)?.checked]))
+}
+function updateEntryChecklistStatus(){
+ const status=$('#entryChecklistStatus');
+ if(!status)return;
+ status.textContent=entryChecklistReviewed?'Проверено':'Не проверено';
+ status.classList.toggle('reviewed',entryChecklistReviewed)
+}
+function setEntryChecklist(answers={},reviewed=false){
+ ENTRY_CHECKLIST_ITEMS.forEach(item=>{
+  const input=$(`[data-entry-check="${item.code}"]`);
+  if(input)input.checked=answers[item.code]===true
+ });
+ entryChecklistReviewed=reviewed===true;
+ updateEntryChecklistStatus()
+}
+function renderEntryChecklist(){
+ const root=$('#entryChecklistItems');
+ if(!root)return;
+ root.replaceChildren(...ENTRY_CHECKLIST_ITEMS.map((item,index)=>{
+  const label=document.createElement('label');
+  label.className='checklist-item';
+  label.innerHTML=`<input type="checkbox" data-entry-check="${item.code}"><span>${index+1}. ${item.label}</span>`;
+  label.querySelector('input').addEventListener('change',()=>{
+   entryChecklistReviewed=false;
+   updateEntryChecklistStatus();
+   saveInstrumentDraft(activeInstrument)
+  });
+  return label
+ }));
+ updateEntryChecklistStatus()
+}
+function checklistRecorded(t){
+ const checklist=t&&t.entryChecklist;
+ return !!(checklist&&checklist.reviewed===true&&checklist.answers&&typeof checklist.answers==='object')
+}
+function checklistDetailsHtml(t){
+ if(!checklistRecorded(t))return '<details class="details"><summary>ЧЕК-ЛИСТ · отсутствует</summary><div class="inside mini-note">Для этой сделки чек-лист ещё не сохранялся.</div></details>';
+ const answers=t.entryChecklist.answers;
+ const rows=ENTRY_CHECKLIST_ITEMS.map((item,index)=>`<div class="checklist-answer"><span>${index+1}. ${item.label}</span><b class="${answers[item.code]===true?'yes':'no'}">${answers[item.code]===true?'Да':'Нет'}</b></div>`).join('');
+ return `<details class="details"><summary>ЧЕК-ЛИСТ · Проверено</summary><div class="inside checklist-readonly">${rows}</div></details>`
+}
 function accountForMode(mode='Real'){
  const key=mode==='Backtest'?'backtestAccount':'realAccount';
  const fallbackBalance=Number(state.balance||0);
@@ -717,10 +804,12 @@ function saveInstrumentDraft(instrument){
   riskShare3:$('#riskShare3').value,
   volume1:$('#volume1').value||'0.01',
   volume2:$('#volume2').value||'0.01',
-  volume3:$('#volume3').value||'0.01',
-  ot:[...form.ot],
-  confirmations:[...form.conf],
-  comment:$('#entryComment').value,
+	  volume3:$('#volume3').value||'0.01',
+	  ot:[...form.ot],
+	  confirmations:[...form.conf],
+	  entryChecklist:readEntryChecklist(),
+	  entryChecklistReviewed,
+	  comment:$('#entryComment').value,
   isReentry:$('#isReentry').value,
   previousTradeId:$('#prevTradeId').value
  };
@@ -738,9 +827,10 @@ function loadInstrumentDraft(instrument){
   $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';$('#initialStopLevel').value='Ручной';
   $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
   $('#riskShare1').value='100';$('#riskShare2').value='50';$('#riskShare3').value='33';
-  $('#entryCount').value='1';
-  $('#entryComment').value='';
-  $('#isReentry').value='Нет';$('#prevTradeId').value='';
+	  $('#entryCount').value='1';
+	  $('#entryComment').value='';
+	  setEntryChecklist(emptyEntryChecklist(),false);
+	  $('#isReentry').value='Нет';$('#prevTradeId').value='';
   $$('.direction button').forEach(b=>b.classList.toggle('active',b.dataset.dir==='Long'));
   toggleEntry2();renderStaticChips();updateInstrumentPriceUI();
   return
@@ -775,9 +865,10 @@ function loadInstrumentDraft(instrument){
  $('#riskShare3').value=d.riskShare3||(isRangeGridEntry()?'40':'33');
  $('#volume1').value=d.volume1||'0.01';
  $('#volume2').value=d.volume2||'0.01';
- $('#volume3').value=d.volume3||'0.01';
- $('#entryComment').value=d.comment||'';
- $('#isReentry').value=d.isReentry||'Нет';
+	 $('#volume3').value=d.volume3||'0.01';
+	 $('#entryComment').value=d.comment||'';
+	 setEntryChecklist(d.entryChecklist||emptyEntryChecklist(),d.entryChecklistReviewed===true);
+	 $('#isReentry').value=d.isReentry||'Нет';
  $('#prevTradeId').value=d.previousTradeId||'';
  $$('.direction button').forEach(b=>b.classList.toggle('active',b.dataset.dir===form.direction));
  toggleEntry2(false);renderEntrySelectors();renderStaticChips();updateInstrumentPriceUI()
@@ -1286,12 +1377,18 @@ $('#instrument').onchange=()=>{
 });
 
 function resetForm(){
- $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';
+	 $('#entryPrice1').value='';$('#entryPrice2').value='';$('#entryPrice3').value='';$('#initialStop').value='';
  $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
  $('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';$('#volumeRange3').value='0.01';
- $('#entryCount').value='1';toggleEntry2();
- form.targets=[];form.ot=[];form.conf=[];$('#entryComment').value='';renderStaticChips();updateInstrumentPriceUI();calcRisk()
+	 $('#entryCount').value='1';toggleEntry2();
+	 form.targets=[];form.ot=[];form.conf=[];$('#entryComment').value='';setEntryChecklist(emptyEntryChecklist(),false);renderStaticChips();updateInstrumentPriceUI();calcRisk()
 }
+$('#confirmEntryChecklist').onclick=()=>{
+ entryChecklistReviewed=true;
+ updateEntryChecklistStatus();
+ saveInstrumentDraft(activeInstrument);
+ $('#entryChecklistPanel').open=false
+};
 function currentEntryPrices(){
  const count=Number($('#entryCount').value||1);
  return [1,2,3].filter(index=>index<=count).map(index=>num($('#entryPrice'+index).value)).filter(x=>x>0)
@@ -1340,8 +1437,13 @@ function applyBacktestDateTimeMasks(){
  time.addEventListener('blur',()=>{time.value=maskBacktestTime(time.value);recalc()})
 }
 $('#saveTrade').onclick=()=>{
- const r=calcRisk();if(!r.ok)return alert('Сделка не проходит проверку риска или обязательных полей.');
- if(!validBacktestDateTime())return;
+	 const r=calcRisk();if(!r.ok)return alert('Сделка не проходит проверку риска или обязательных полей.');
+	 if(!validBacktestDateTime())return;
+	 if(!entryChecklistReviewed){
+	  $('#entryChecklistPanel').open=true;
+	  $('#entryChecklistPanel').scrollIntoView({behavior:'smooth',block:'center'});
+	  return alert('Проверь ЧЕК-ЛИСТ и нажми «Проверено».')
+	 }
  if(isRangeGridEntry()){
   const count=Number($('#entryCount').value||1);
   const levels=[1,2,3].filter(index=>index<=count).map(index=>$('#entryLevel'+index).value);
@@ -1361,7 +1463,9 @@ $('#saveTrade').onclick=()=>{
    {level:$('#entryLevel1').value,execution:$('#entryLevel1').value,price:num($('#entryPrice1').value),riskShare:num($('#riskShare1').value),volume:num($('#volume1').value),maxAllowedVolume:r.max1,executed:true,executedAt:nowIso()}
   ],
   targets:[],availableTargets:availableTargetsForTrade({strategy:$('#strategy').value,method:form.method,methods:[...form.methods],subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:''}),
-  ot:[...form.ot],confirmations:[...form.conf],comment:$('#entryComment').value,
+	  ot:[...form.ot],confirmations:[...form.conf],
+	  entryChecklist:{version:ENTRY_CHECKLIST_VERSION,reviewed:true,reviewedAt:nowIso(),answers:readEntryChecklist()},
+	  comment:$('#entryComment').value,
   plannedRisk:r.actual,initialRisk:Math.abs(num($('#entryPrice1').value)-startStop)*specs[$('#instrument').value].contract*num($('#volume1').value),currentRisk:Math.abs(num($('#entryPrice1').value)-startStop)*specs[$('#instrument').value].contract*num($('#volume1').value),avgPrice:num($('#entryPrice1').value),totalVolume:num($('#volume1').value),remainingVolume:num($('#volume1').value),exits:[],stops:[],
   violations:[],isReentry:$('#isReentry').value,previousTradeId:$('#prevTradeId').value,
   impulseReached23:'',impulseReachedMinus15:'',impulseReachedComment:''
@@ -1470,9 +1574,10 @@ function riskStatusLabel(t){
 function tradeCard(t,kind='open'){
  const c=document.createElement('div');c.className='card trade';
  c.innerHTML=`<div class="trade-head"><div><div class="trade-title">${t.instrument} · ${t.direction}</div><div class="mini-note">${t.strategy}${t.subtype?' / '+t.subtype:''}${gridStrategyLabel(t)} · ${t.method} · ${t.id}</div></div><span class="badge">${t.mode}</span></div>
- <div class="mini-note" style="margin-top:8px"><b>Дата сделки:</b> ${formatTradeDate(t)}</div>
- <div class="mini-note" style="margin-top:6px"><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}</div>
- <div class="mini-note" style="margin-top:3px"><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}</div>
+	 <div class="mini-note" style="margin-top:8px"><b>Дата сделки:</b> ${formatTradeDate(t)}</div>
+	 <div class="mini-note" style="margin-top:6px"><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}</div>
+	 <div class="mini-note" style="margin-top:3px"><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}</div>
+	 <button type="button" class="checklist-link">${checklistRecorded(t)?'ЧЕК-ЛИСТ · Проверено':'ЧЕК-ЛИСТ · отсутствует'}</button>
  ${t.status==='not_triggered'?'<div class="mini-note" style="margin-top:6px"><b>Вход не состоялся:</b> цена не дошла. PnL, R и статистика сделок не учитываются.</div>':''}
  ${pendingEntries(t).length?`<div class="mini-note" style="margin-top:3px"><b>Ожидают цены:</b> ${pendingEntries(t).length}</div>`:''}
  <div class="trade-grid">
@@ -1497,7 +1602,8 @@ function tradeCard(t,kind='open'){
  }else{
   const b=document.createElement('button');b.className='secondary wide';b.textContent='Показать детали';b.onclick=()=>showDetails(t.id);a.append(b)
  }
- c.append(a);return c
+	 c.querySelector('.checklist-link').onclick=()=>showDetails(t.id);
+	 c.append(a);return c
 }
 function renderOpen(){
  const list=$('#openList'),ts=openTrades();$('#openCountLabel').textContent=ts.length+' сделок';list.replaceChildren(...(ts.length?ts.map(t=>tradeCard(t)):[Object.assign(document.createElement('div'),{className:'card empty',textContent:'Открытых сделок нет.'})]))
@@ -2341,8 +2447,9 @@ function showDetails(id){
  <p><b>Входы:</b><br>${entries}</p>
  <p><b>Средняя цена:</b> ${Number(t.avgPrice).toFixed(d)} · <b>Начальный объём:</b> ${Number(t.totalVolume).toFixed(2)} · <b>Остаток:</b> ${Number(t.remainingVolume).toFixed(2)}<br><b>Риск в резерве:</b> ${money(reservedRiskForTrade(t))}</p>
  <p><b>Первоначальный стоп:</b> ${Number(t.initialStop).toFixed(d)}${t.initialStopLevel?` · уровень ${t.initialStopLevel}`:''} · <b>Текущий стоп:</b> ${Number(t.currentStop).toFixed(d)}<br><b>${riskStatusLabel(t)}:</b> ${riskText(t.currentRisk)}</p>
- <p><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}<br><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}<br><b>Комментарий к входу:</b> ${t.comment||'—'}</p>
- <div class="exit-ledger"><b>История стопов</b>${stops}</div>
+	 <p><b>ОТ:</b> ${(t.ot||[]).join(', ')||'—'}<br><b>Подтверждения:</b> ${(t.confirmations||[]).join(', ')||'—'}<br><b>Комментарий к входу:</b> ${t.comment||'—'}</p>
+	 ${checklistDetailsHtml(t)}
+	 <div class="exit-ledger"><b>История стопов</b>${stops}</div>
  <div class="exit-ledger"><b>Фактические выходы</b>${exits}</div>
  <p><b>Прибыль:</b> ${money(realizedPnl(t))}<br><b>Фиксация:</b> ${reachedTargets(t)}<br><b>Цена достигла:</b> ${priceReachedLabel(t)}<br><b>Итог:</b> ${Number(t.rResult||0).toFixed(2)}R · <b>Максимальные цели:</b> ${maxTargetsText(t)}</p>
   ${rangeEntryReviewText(t)}
@@ -2363,7 +2470,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='62';
+const APP_VERSION='63';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2573,9 +2680,9 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,initial_stop_level:t.initialStopLevel||'',current_stop:t.currentStop,stop_was_moved:(t.stops||[]).length>0,stop_exit_count:(t.exits||[]).filter(e=>e.reason==='Стоп').length,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
- }));
- const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];
+	  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,initial_stop_level:t.initialStopLevel||'',current_stop:t.currentStop,stop_was_moved:(t.stops||[]).length>0,stop_exit_count:(t.exits||[]).filter(e=>e.reason==='Стоп').length,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],checklist_recorded:checklistRecorded(t),checklist_version:checklistRecorded(t)?t.entryChecklist.version||1:'',checklist_reviewed_at:checklistRecorded(t)?t.entryChecklist.reviewedAt||'':'',comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+	 }));
+	 const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];const entryFactors=[];
  (state.trades||[]).forEach(t=>{
   const ctx=tradeContextFields(t);
   (t.entries||[]).forEach((e,i)=>entries.push({...ctx,entry_no:i+1,price:e.price,volume:e.volume,risk_share:e.riskShare,max_allowed_volume:e.maxAllowedVolume??'',level:e.level||'',execution:e.execution||'',execution_status:entryStatus(e),execution_reason:e.notExecutedReason||'',counts_in_math:entryStatus(e)==='executed',counts_in_reserved_risk:entryStatus(e)!=='not_executed',created_at:t.createdAt||''}));
@@ -2586,10 +2693,28 @@ function exportAnalysisFiles(){
    entryOutcomes.push({...ctx,entry_level_no:index+1,level,outcome:rangeEntryOutcome(t,level),entry_recorded:!!entry,entry_planned:review.planned,entry_executed:review.entryExecuted,price_reached:review.priceReached,reviewed:review.reviewed,counts_in_math:review.entryExecuted,reviewed_at:t.entryLevelReviewAt||''})
   });
   (t.exits||[]).forEach((e,i)=>exits.push({...ctx,...exitReportMeta(e,t),exit_no:i+1,reason:e.reason||'',group:e.group||'',label:e.label||'',price:e.price,volume:e.volume,requested_volume:e.requestedVolume??e.volume,excluded_volume:e.excludedVolume??0,calculation_status:e.calculationStatus||'counted',pnl:e.pnl,at:e.at||'',stop_at_exit:e.stopPriceAtExit??e.stopAtExit??'',remaining_after:e.remainingAfter??'',comment:e.comment||''}));
-  (t.stops||[]).forEach((e,i)=>stops.push({...ctx,stop_no:i+1,old_stop:e.oldStop,new_stop:e.price,source:e.sourceLabel||e.source||'',risk_after:e.riskAfter,locked_profit:e.lockedProfit,at:e.at||''}));
-  (t.ot||[]).forEach(v=>tradeOt.push({...ctx,ot:v}));
-  (t.confirmations||[]).forEach(v=>tradeConf.push({...ctx,confirmation:v}));
- });
+	  (t.stops||[]).forEach((e,i)=>stops.push({...ctx,stop_no:i+1,old_stop:e.oldStop,new_stop:e.price,source:e.sourceLabel||e.source||'',risk_after:e.riskAfter,locked_profit:e.lockedProfit,at:e.at||''}));
+	  (t.ot||[]).forEach(v=>tradeOt.push({...ctx,ot:v}));
+	  (t.confirmations||[]).forEach(v=>tradeConf.push({...ctx,confirmation:v}));
+	  if(checklistRecorded(t)){
+	   const lastExit=(t.exits||[]).length?t.exits[t.exits.length-1]:null;
+	   ENTRY_CHECKLIST_ITEMS.forEach((item,index)=>entryFactors.push({
+	    ...ctx,
+	    factor_no:index+1,
+	    factor_code:item.code,
+	    factor_name:item.label,
+	    answer:t.entryChecklist.answers[item.code]===true?'Да':'Нет',
+	    checklist_version:t.entryChecklist.version||1,
+	    reviewed_at:t.entryChecklist.reviewedAt||'',
+	    pnl_usd:Number(t.pnl??realizedPnl(t)),
+	    result_r:Number(t.rResult||0),
+	    reached_targets:priceReachedLabel(t),
+	    actual_exits:reachedTargets(t),
+	    close_reason:lastExit?(lastExit.reason||lastExit.label||''):'',
+	    closed_at:t.closedAt||''
+	   }))
+	  }
+	 });
  const modeByTrade=new Map((state.trades||[]).map(t=>[t.id,accountModeForTrade(t)]));
  const legacyBalance=(state.legacyBalanceEvents||state.balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,account_mode:modeByTrade.get(e.trade_id)||'Real',legacy:true,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''}));
  const accountBalance=['Real','Backtest'].flatMap(mode=>(accountForMode(mode).balanceEvents||[]).map(e=>({event_id:e.id,type:e.type,account_mode:mode,legacy:false,amount:e.amount,trade_id:e.trade_id||'',comment:e.comment||'',balance_before:e.balance_before,balance_after:e.balance_after,at:e.at||''})));
@@ -2597,7 +2722,7 @@ function exportAnalysisFiles(){
  const stamp=fileStamp();
  const exportPayload={
   format:'TradingOSAnalysisExport',
-  exportVersion:8,
+	  exportVersion:9,
   appVersion:APP_VERSION,
   schemaVersion:APP_SCHEMA_VERSION,
   storageKey:STORAGE_KEY,
@@ -2607,20 +2732,22 @@ function exportAnalysisFiles(){
    ENTRIES:entries.length,
    ENTRY_LEVEL_OUTCOMES:entryOutcomes.length,
    EXITS:exits.length,
-   STOP_EVENTS:stops.length,
-   TRADE_OT:tradeOt.length,
-   TRADE_CONFIRMATIONS:tradeConf.length,
-   BALANCE_EVENTS:balance.length
+	   STOP_EVENTS:stops.length,
+	   TRADE_OT:tradeOt.length,
+	   TRADE_CONFIRMATIONS:tradeConf.length,
+	   ENTRY_FACTORS:entryFactors.length,
+	   BALANCE_EVENTS:balance.length
   },
   tables:cleanExportText({
    TRADES:trades,
    ENTRIES:entries,
    ENTRY_LEVEL_OUTCOMES:entryOutcomes,
    EXITS:exits,
-   STOP_EVENTS:stops,
-   TRADE_OT:tradeOt,
-   TRADE_CONFIRMATIONS:tradeConf,
-   BALANCE_EVENTS:balance
+	   STOP_EVENTS:stops,
+	   TRADE_OT:tradeOt,
+	   TRADE_CONFIRMATIONS:tradeConf,
+	   ENTRY_FACTORS:entryFactors,
+	   BALANCE_EVENTS:balance
   })
  };
  downloadBlob(`TradingOS_ANALYSIS_EXPORT_${stamp}.json`,JSON.stringify(exportPayload,null,2),'application/json;charset=utf-8');
@@ -2722,7 +2849,7 @@ applyBacktestDateTimeMasks();
 setTheme(state.theme||'light');
 $('#volume1').value='0.01';$('#volume2').value='0.01';$('#volume3').value='0.01';
 $('#volumeRange1').value='0.01';$('#volumeRange2').value='0.01';$('#volumeRange3').value='0.01';
-syncMethodString();renderStaticChips();renderStrategy();loadInstrumentDraft(activeInstrument);updateInstrumentPriceUI();updateHeader();updateStorageStatus();calcRisk();
+renderEntryChecklist();syncMethodString();renderStaticChips();renderStrategy();loadInstrumentDraft(activeInstrument);updateInstrumentPriceUI();updateHeader();updateStorageStatus();calcRisk();
 </script>
 </body>
 </html>
