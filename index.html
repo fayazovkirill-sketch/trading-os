@@ -269,7 +269,7 @@ input,select,textarea,button{min-height:44px}
   <div class="card">
     <div class="row">
       <div class="field"><label>Инструмент</label>
-        <select id="instrument"><option>GOLD</option><option selected>SILVER</option><option>BR</option><option>WTI</option><option>EURUSD</option><option>USDCAD</option></select>
+        <select id="instrument"><option>GOLD</option><option selected>SILVER</option><option>BR</option><option>WTI</option><option>EURUSD</option><option>USDCAD</option><option>GBPUSD</option><option>US500</option></select>
       </div>
       <div class="field"><label>Направление</label>
         <div class="direction"><button class="long active" data-dir="Long">Long</button><button class="short" data-dir="Short">Short</button></div>
@@ -752,9 +752,11 @@ const specs={
  GOLD:{digits:2,contract:100,step:.01,example:'4026.00'},
  SILVER:{digits:3,contract:5000,step:.01,example:'56.300'},
  BR:{digits:2,contract:1000,step:.01,example:'80.25'},
- WTI:{digits:2,contract:1000,step:.01,example:'76.40'},
+ WTI:{digits:3,contract:1000,step:.01,example:'76.400'},
  EURUSD:{digits:5,contract:100000,step:.01,example:'1.08500'},
- USDCAD:{digits:5,contract:100000,step:.01,example:'1.36500'}
+ USDCAD:{digits:5,contract:100000,step:.01,example:'1.36500'},
+ GBPUSD:{digits:5,contract:100000,step:.01,example:'1.34500'},
+ US500:{digits:2,contract:1,step:.01,example:'7536.68'}
 };
 
 function instrumentSpec(instrument=$('#instrument').value){
@@ -2470,7 +2472,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='63';
+const APP_VERSION='64';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
