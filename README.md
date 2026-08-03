@@ -2,11 +2,11 @@
 
 Рабочее приложение: `index.html`.
 
-Точная сохранённая копия production-кода v66: [`releases/Trading_OS_v66_CURRENT.html`](releases/Trading_OS_v66_CURRENT.html).
+Точная сохранённая копия production-кода v67: [`releases/Trading_OS_v67_CURRENT.html`](releases/Trading_OS_v67_CURRENT.html).
 
-Копия версии до правки: [`backups/index_v65_before_v66.html`](backups/index_v65_before_v66.html).
+Копия версии до правки: [`backups/index_v65_before_v67.html`](backups/index_v65_before_v67.html).
 
-Полная согласованная логика, расчёты, стратегия и правила: [`PROJECT_MASTER_v59.md`](PROJECT_MASTER_v59.md) (актуализация до v66 в работе).
+Полная согласованная логика, расчёты, стратегия и правила: [`PROJECT_MASTER_v59.md`](PROJECT_MASTER_v59.md) (актуализация до v67 в работе).
 
 ## Инструменты
 
@@ -25,6 +25,7 @@
 
 ## История версий
 
+- **v67** — в аналитический экспорт добавлено поле `trade_datetime` с нормализованной датой.
 - **v66** — US500 переведён на минимальный лот 1.00; подсказки об объёме показывают настоящий минимум инструмента.
 - **v65** — добавлены USDCHF и USDJPY; для пар, где доллар стоит первым, результат переводится в доллары; BRENT переведён на 3 знака.
 - **v64** — добавлены GBPUSD и US500 (S&P 500); WTI переведён на 3 знака после запятой.

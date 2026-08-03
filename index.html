@@ -2493,7 +2493,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='66';
+const APP_VERSION='67';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
@@ -2645,8 +2645,11 @@ function tradeDateParts(t){
 }
 function tradeReportMeta(t){
  const parts=tradeDateParts(t);
+ const hh=parts.hour===''?'':String(parts.hour).padStart(2,'0');
+ const mm=parts.minute===''?'':String(parts.minute).padStart(2,'0');
  return {
   trade_date_key:parts.dateKey,
+  trade_datetime:parts.dateKey?(hh?`${parts.dateKey} ${hh}:${mm||'00'}`:parts.dateKey):'',
   trade_hour:parts.hour,
   weekday:weekdayForDateKey(parts.dateKey),
   session:sessionForTime(parts.hour,parts.minute),
@@ -2695,6 +2698,7 @@ function tradeContextFields(t){
   grid_entry_level:t.gridLevel||'',
   grid_target:gridTargetForLevel(t.gridLevel)||'',
   trade_date_key:meta.trade_date_key,
+  trade_datetime:meta.trade_datetime,
   trade_hour:meta.trade_hour,
   weekday:meta.weekday,
   session:meta.session,
@@ -2703,7 +2707,7 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-	  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,initial_stop_level:t.initialStopLevel||'',current_stop:t.currentStop,stop_was_moved:(t.stops||[]).length>0,stop_exit_count:(t.exits||[]).filter(e=>e.reason==='Стоп').length,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],checklist_recorded:checklistRecorded(t),checklist_version:checklistRecorded(t)?t.entryChecklist.version||1:'',checklist_reviewed_at:checklistRecorded(t)?t.entryChecklist.reviewedAt||'':'',comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+	  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,trade_datetime:tradeReportMeta(t).trade_datetime,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,initial_stop_level:t.initialStopLevel||'',current_stop:t.currentStop,stop_was_moved:(t.stops||[]).length>0,stop_exit_count:(t.exits||[]).filter(e=>e.reason==='Стоп').length,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],checklist_recorded:checklistRecorded(t),checklist_version:checklistRecorded(t)?t.entryChecklist.version||1:'',checklist_reviewed_at:checklistRecorded(t)?t.entryChecklist.reviewedAt||'':'',comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
 	 }));
 	 const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];const entryFactors=[];
  (state.trades||[]).forEach(t=>{
