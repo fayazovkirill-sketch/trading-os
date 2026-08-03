@@ -376,7 +376,7 @@ input,select,textarea,button{min-height:44px}
     <h3>Расчёт риска</h3>
     <div class="riskbox">
       <div class="metric"><span>Доступно</span><b id="rAllowed">$10.00</b></div>
-      <div class="metric"><span>Риск 0.01</span><b id="rMin">$0.00</b></div>
+      <div class="metric"><span id="rMinLabel">Риск 0.01</span><b id="rMin">$0.00</b></div>
       <div class="metric"><span>Риск объёма</span><b id="rActual">$0.00</b></div>
       <div class="metric"><span>Макс. объём</span><b id="rMaxVol">0.00</b></div>
       <div class="metric"><span>Средняя</span><b id="rAvg">—</b></div>
@@ -756,13 +756,19 @@ const specs={
  EURUSD:{digits:5,contract:100000,step:.01,example:'1.08500'},
  USDCAD:{digits:5,contract:100000,step:.01,example:'1.36500'},
  GBPUSD:{digits:5,contract:100000,step:.01,example:'1.34500'},
- US500:{digits:2,contract:1,step:.01,example:'7536.68'},
+ US500:{digits:2,contract:1,step:1,example:'7536.68'},
  USDCHF:{digits:5,contract:100000,step:.01,example:'0.81000',usdBase:true},
  USDJPY:{digits:3,contract:100000,step:.01,example:'159.000',usdBase:true}
 };
 
 // Для пар, где доллар стоит первым (USDCHF, USDJPY), результат формулы выходит
 // в валюте котировки. Делим на цену пары — получаем доллары.
+// Минимальный лот инструмента текстом: 0.01 для валют, 1.00 для US500
+function lotLabel(sp){
+ const st=Number((sp&&sp.step)||.01);
+ const d=Math.max(2,String(st).includes('.')?String(st).split('.')[1].length:0);
+ return st.toFixed(d)
+}
 function contractValue(sp,price){
  if(!sp)return 1;
  const p=Number(price);
@@ -786,6 +792,8 @@ function updateInstrumentPriceUI(){
   const el=$('#'+id);
   if(el.value&&num(el.value))el.value=num(el.value).toFixed(sp.digits)
  });
+ const st=Number(sp.step||.01),dg=Math.max(2,String(st).includes('.')?String(st).split('.')[1].length:0);
+ [1,2,3].forEach(i=>{const el=$('#volume'+i);if(el&&num(el.value)<st)el.value=st.toFixed(dg)});
 }
 function persistStateOnly(){
  localStorage.setItem('tradingOS_v3',JSON.stringify(state))
@@ -1282,6 +1290,7 @@ function configureVolumeControl(index,maxVolume){
  minus.disabled=num(input.value)<=step+.0000001;
  plus.disabled=maxVolume<step||num(input.value)>=usableMax-.0000001;
  $('#volumeMin'+index).disabled=maxVolume<step;
+ $('#volumeMin'+index).textContent=step.toFixed(digits);
  $('#volumeHalf'+index).disabled=maxVolume<step;
  $('#volumeMax'+index).disabled=maxVolume<step;
  if(num(input.value)<=usableMax+.0001)range.value=Math.max(step,num(input.value)).toFixed(digits);
@@ -1299,7 +1308,7 @@ function calcRisk(){
  const allowed=tradeAllowed();
  const maxVol=maxes.reduce((sum,v)=>sum+v,0);
  const shares=entries.reduce((sum,e)=>sum+e.share,0);
- $('#rAllowed').textContent=money(allowed);$('#rMin').textContent=money(minRisk);$('#rActual').textContent=money(actual);
+ $('#rAllowed').textContent=money(allowed);$('#rMin').textContent=money(minRisk);{const lbl=$('#rMinLabel');if(lbl)lbl.textContent='Риск '+lotLabel(sp);}$('#rActual').textContent=money(actual);
  $('#rMaxVol').textContent=maxVol.toFixed(2);$('#rAvg').textContent=avg?avg.toFixed(sp.digits):'—';$('#rShares').textContent=shares+'%';
  const minimumRiskOverLimit=entries.map((e,index)=>{
   const minimum=Math.abs(e.price-stop)*contractValue(sp,e.price)*sp.step;
@@ -1311,7 +1320,7 @@ function calcRisk(){
   if(!entry){hintText.textContent='Максимум: —'}
   else if(minimumRiskOverLimit[i-1]){
    hint.classList.add('bad');
-   hintText.textContent='Риск превышен: даже 0.01 больше доступного риска.';
+   hintText.textContent=`Риск превышен: даже ${lotLabel(sp)} больше доступного риска.`;
   }else if(entry.volume>max+.0001){
    hint.classList.add('bad');
    hintText.textContent=`Риск превышен: выбрано ${entry.volume.toFixed(2)}, допустимо ${max.toFixed(2)} контр.`;
@@ -1322,10 +1331,10 @@ function calcRisk(){
  const volumeOverMax=entries.some((e,i)=>e.volume>maxes[i]+.0001);
  const has=avg&&stop;let cls='warn',msg='Введите цену входа и стоп.';
  if(avg&&stop&&shares!==100){cls='bad';msg='Сумма долей риска должна быть 100%.'}
- else if(avg&&stop&&minimumRiskOverLimit.some(Boolean)){const index=minimumRiskOverLimit.findIndex(Boolean);cls='bad';msg=`Вход ${index+1}: даже минимальный объём 0.01 превышает его доступную долю риска.`}
+ else if(avg&&stop&&minimumRiskOverLimit.some(Boolean)){const index=minimumRiskOverLimit.findIndex(Boolean);cls='bad';msg=`Вход ${index+1}: даже минимальный объём ${lotLabel(sp)} превышает его доступную долю риска.`}
  else if(avg&&stop&&volumeOverMax){const index=entries.findIndex((e,i)=>e.volume>maxes[i]+.0001);cls='bad';msg=`Вход ${index+1}: риск превышен. Выбрано ${entries[index].volume.toFixed(2)}, допустимо ${maxes[index].toFixed(2)} контр.`}
- else if(has && total<sp.step){cls='bad';msg='Объём меньше минимального 0.01.'}
- else if(has && minRisk>allowed){cls='bad';msg='Даже минимальный объём 0.01 превышает доступный риск.'}
+ else if(has && total<sp.step){cls='bad';msg=`Объём меньше минимального ${lotLabel(sp)}.`}
+ else if(has && minRisk>allowed){cls='bad';msg=`Даже минимальный объём ${lotLabel(sp)} превышает доступный риск.`}
  else if(has && actual>allowed+.001){cls='bad';msg='Риск введённого объёма превышает допустимый. Сохранение заблокировано.'}
  else if(avg&&stop&&!initialStopDirectionOk(avg,stop,prices)){cls='bad';msg=initialStopDirectionMessage(avg,stop,prices)}
  else if(has){cls='good';msg='Риск проверен. Сделку можно открыть.'}
@@ -1747,6 +1756,9 @@ function showClose(id){
  $('#mExitRange').min=instrumentStep;
  $('#mExitRange').step=instrumentStep;
  $('#mExitRange').max=Math.max(instrumentStep,t.remainingVolume);
+ {const q=$('#qOne');if(q)q.textContent=instrumentStep.toFixed(instrumentDigits);
+  const note=document.querySelector('.step-note');
+  if(note)note.textContent=`Можно выбрать кнопкой, шкалой или ввести количество вручную. Шаг ${instrumentStep.toFixed(instrumentDigits)}.`;}
  const priceChips=[];
  priceChips.push({label:'Стоп',price:t.currentStop,source:'Текущая цена стопа'});
  priceChips.push({label:'Средняя',price:t.avgPrice,source:'Средняя цена входа'});
@@ -2481,7 +2493,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='65';
+const APP_VERSION='66';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
