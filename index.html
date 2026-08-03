@@ -269,7 +269,7 @@ input,select,textarea,button{min-height:44px}
   <div class="card">
     <div class="row">
       <div class="field"><label>Инструмент</label>
-        <select id="instrument"><option>GOLD</option><option selected>SILVER</option><option>BR</option><option>WTI</option><option>EURUSD</option><option>USDCAD</option><option>GBPUSD</option><option>US500</option></select>
+        <select id="instrument"><option>GOLD</option><option selected>SILVER</option><option>BR</option><option>WTI</option><option>EURUSD</option><option>USDCAD</option><option>GBPUSD</option><option>US500</option><option>USDCHF</option><option>USDJPY</option></select>
       </div>
       <div class="field"><label>Направление</label>
         <div class="direction"><button class="long active" data-dir="Long">Long</button><button class="short" data-dir="Short">Short</button></div>
@@ -751,14 +751,23 @@ function accountBalance(mode=activeRiskMode()){return accountForMode(mode).balan
 const specs={
  GOLD:{digits:2,contract:100,step:.01,example:'4026.00'},
  SILVER:{digits:3,contract:5000,step:.01,example:'56.300'},
- BR:{digits:2,contract:1000,step:.01,example:'80.25'},
+ BR:{digits:3,contract:1000,step:.01,example:'80.250'},
  WTI:{digits:3,contract:1000,step:.01,example:'76.400'},
  EURUSD:{digits:5,contract:100000,step:.01,example:'1.08500'},
  USDCAD:{digits:5,contract:100000,step:.01,example:'1.36500'},
  GBPUSD:{digits:5,contract:100000,step:.01,example:'1.34500'},
- US500:{digits:2,contract:1,step:.01,example:'7536.68'}
+ US500:{digits:2,contract:1,step:.01,example:'7536.68'},
+ USDCHF:{digits:5,contract:100000,step:.01,example:'0.81000',usdBase:true},
+ USDJPY:{digits:3,contract:100000,step:.01,example:'159.000',usdBase:true}
 };
 
+// Для пар, где доллар стоит первым (USDCHF, USDJPY), результат формулы выходит
+// в валюте котировки. Делим на цену пары — получаем доллары.
+function contractValue(sp,price){
+ if(!sp)return 1;
+ const p=Number(price);
+ return sp.usdBase&&p>0 ? sp.contract/p : sp.contract
+}
 function instrumentSpec(instrument=$('#instrument').value){
  return specs[instrument]||{digits:2,contract:1,step:.01,example:'0.00'}
 }
@@ -1247,7 +1256,7 @@ function syncAutomaticRiskShares(){
 }
 function maxForEntry(price,share){
  const inst=$('#instrument').value,sp=specs[inst],stop=num($('#initialStop').value),allowed=tradeAllowed()*share/100;
- return price&&stop&&Math.abs(price-stop)>0?floorStep(allowed/(Math.abs(price-stop)*sp.contract),sp.step):0
+ return price&&stop&&Math.abs(price-stop)>0?floorStep(allowed/(Math.abs(price-stop)*contractValue(sp,price)),sp.step):0
 }
 
 function roundedVolume(v){
@@ -1285,15 +1294,15 @@ function calcRisk(){
  const entries=[1,2,3].filter(i=>i<=count).map(i=>({index:i,price:num($('#entryPrice'+i).value),volume:num($('#volume'+i).value),share:num($('#riskShare'+i).value)}));
  const total=entries.reduce((sum,e)=>sum+e.volume,0);
  const maxes=entries.map(e=>maxForEntry(e.price,e.share));
- const actual=entries.reduce((sum,e)=>sum+Math.abs(e.price-stop)*sp.contract*e.volume,0);
- const minRisk=entries.length?Math.abs(entries[0].price-stop)*sp.contract*sp.step:0;
+ const actual=entries.reduce((sum,e)=>sum+Math.abs(e.price-stop)*contractValue(sp,e.price)*e.volume,0);
+ const minRisk=entries.length?Math.abs(entries[0].price-stop)*contractValue(sp,entries[0].price)*sp.step:0;
  const allowed=tradeAllowed();
  const maxVol=maxes.reduce((sum,v)=>sum+v,0);
  const shares=entries.reduce((sum,e)=>sum+e.share,0);
  $('#rAllowed').textContent=money(allowed);$('#rMin').textContent=money(minRisk);$('#rActual').textContent=money(actual);
  $('#rMaxVol').textContent=maxVol.toFixed(2);$('#rAvg').textContent=avg?avg.toFixed(sp.digits):'—';$('#rShares').textContent=shares+'%';
  const minimumRiskOverLimit=entries.map((e,index)=>{
-  const minimum=Math.abs(e.price-stop)*sp.contract*sp.step;
+  const minimum=Math.abs(e.price-stop)*contractValue(sp,e.price)*sp.step;
   return Boolean(e.price&&stop&&minimum>allowed*e.share/100+.001);
  });
  [1,2,3].forEach(i=>{
@@ -1563,8 +1572,8 @@ function stopRiskValue(t,stopPrice){
  if(!sp||!remaining)return 0;
  const avg=Number(t.avgPrice||0),stop=Number(stopPrice||0);
  const protectedPnl=t.direction==='Long'
-  ? (stop-avg)*sp.contract*remaining
-  : (avg-stop)*sp.contract*remaining;
+  ? (stop-avg)*contractValue(sp,stop)*remaining
+  : (avg-stop)*contractValue(sp,stop)*remaining;
  // protectedPnl > 0 means stop already locks profit. Store as negative risk.
  return protectedPnl>=0 ? -protectedPnl : Math.abs(protectedPnl);
 }
@@ -2038,7 +2047,7 @@ function pendingEntries(t){return (t.entries||[]).filter(e=>entryStatus(e)==='pe
 function pendingEntryRisk(t){
  const sp=specs[t.instrument];
  if(!sp)return 0;
- const value=pendingEntries(t).reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.currentStop||t.initialStop||0))*sp.contract*Number(e.volume||0),0);
+ const value=pendingEntries(t).reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.currentStop||t.initialStop||0))*contractValue(sp,e.price)*Number(e.volume||0),0);
  return Math.round(value*100000000)/100000000;
 }
 function reservedRiskForTrade(t){
@@ -2070,7 +2079,7 @@ function recalculateExecutedEntryState(t){
  t.avgPrice=avg;
  t.totalVolume=Math.round(total*1000000)/1000000;
  t.remainingVolume=t.totalVolume;
- t.initialRisk=entries.reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.initialStop||0))*sp.contract*Number(e.volume||0),0);
+ t.initialRisk=entries.reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.initialStop||0))*contractValue(sp,e.price)*Number(e.volume||0),0);
  t.currentRisk=stopRiskValue(t,t.currentStop);
  return true;
 }
@@ -2194,7 +2203,7 @@ function recalculateImpulseExecution(t){
  }
  const total=entries.reduce((sum,e)=>sum+Number(e.volume||0),0);
  const avg=entries.reduce((sum,e)=>sum+Number(e.price||0)*Number(e.volume||0),0)/total;
- const initialRisk=entries.reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.initialStop||0))*sp.contract*Number(e.volume||0),0);
+ const initialRisk=entries.reduce((sum,e)=>sum+Math.abs(Number(e.price||0)-Number(t.initialStop||0))*contractValue(sp,e.price)*Number(e.volume||0),0);
  t.totalVolume=Math.round(total*1000000)/1000000;
  t.avgPrice=avg;
  t.initialRisk=initialRisk;
@@ -2211,7 +2220,7 @@ function recalculateImpulseExecution(t){
   exit.excludedVolume=Math.max(0,requested-volume);
   exit.calculationStatus=volume>0?'counted':'excluded_no_position';
   const signed=t.direction==='Long'?Number(exit.price)-avg:avg-Number(exit.price);
-  exit.pnl=exit.reason==='БУ'?0:signed*sp.contract*volume;
+  exit.pnl=exit.reason==='БУ'?0:signed*contractValue(sp,exit.price)*volume;
   exit.percentInitial=t.totalVolume?volume/t.totalVolume*100:0;
   remaining=Math.max(0,floorStep(remaining-volume,step));
   exit.remainingAfter=remaining;
@@ -2472,7 +2481,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='64';
+const APP_VERSION='65';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
