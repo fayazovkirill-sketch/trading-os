@@ -1074,7 +1074,7 @@ function chipButton(label,active,cb){
  const b=document.createElement('button');b.type='button';b.textContent=label;b.classList.toggle('active',active);b.onclick=cb;return b
 }
 function renderStaticChips(){
- const ots=['УрГ','УрПоИ','POC','Истор','МА200','Трендовая','V(D)','V(W)','V(M)','З.ПОКУП','З.ПРОДАЖ'];
+ const ots=['УрГ','УрПоИ','POC','УгГ','Истор','МА200','Трендовая','V(D)','V(W)','V(M)','З.ПОКУП','З.ПРОДАЖ'];
  const conf=['СЕРЧ','Лимитка','Объёмы','МакД','Крюк'];
  $('#otChips').replaceChildren(...ots.map(v=>chipButton(v,form.ot.includes(v),()=>{form.ot=form.ot.includes(v)?form.ot.filter(x=>x!==v):[...form.ot,v];renderStaticChips();saveInstrumentDraft(activeInstrument)})));
  $('#confirmChips').replaceChildren(...conf.map(v=>chipButton(v,form.conf.includes(v),()=>{form.conf=form.conf.includes(v)?form.conf.filter(x=>x!==v):[...form.conf,v];renderStaticChips();saveInstrumentDraft(activeInstrument)})));
@@ -1162,6 +1162,12 @@ function renderStrategy(){
   sel.replaceChildren(...r.subtypes.map(v=>new Option(v,v)));
   if(r.subtypes.includes(old))sel.value=old;
  }else sw.classList.add('hidden');
+ // Диапазон: подтип жёстко следует за направлением. Long -> Накопление, Short -> Распределение.
+ sel.disabled=false;
+ if(s==='Диапазон'){
+  sel.value=form.direction==='Short'?'Распределение':'Накопление';
+  sel.disabled=true;
+ }
  gw.classList.toggle('hidden',s!=='По сетке');
 
  let methods=[...r.methods];
@@ -1222,7 +1228,9 @@ $$('#modeSeg button').forEach(b=>b.onclick=()=>{
  updateHeader();calcRisk();
 });
 $$('.direction button').forEach(b=>b.onclick=()=>{
- form.direction=b.dataset.dir;$$('.direction button').forEach(x=>x.classList.toggle('active',x===b));saveInstrumentDraft(activeInstrument);calcRisk()
+ form.direction=b.dataset.dir;$$('.direction button').forEach(x=>x.classList.toggle('active',x===b));
+ if($('#strategy').value==='Диапазон'){form.targets=[];renderStrategy()}
+ saveInstrumentDraft(activeInstrument);calcRisk()
 });
 function toggleEntry2(resetShares=true){
  const count=Number($('#entryCount').value||1);
@@ -2493,7 +2501,7 @@ function showDetails(id){
  $('#mDeleteTrade').onclick=()=>deleteTrade(t.id)
 }
 
-const APP_VERSION='67';
+const APP_VERSION='68';
 const STORAGE_KEY='tradingOS_v3';
 function fileStamp(){
  const d=new Date();
