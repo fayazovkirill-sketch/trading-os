@@ -923,11 +923,11 @@ const rules={
 };
 // --- Бабуля (ABCD). Точки входа и цели схемы по подтипам. Проценты - подсказка, приложение их не проверяет.
 const babulyaSpec={
- '4.1':{points:[{point:'т.С',hint:'38-68% AB',levels:['38','50','61','68']},{point:'т.Д',hint:'1.13-1.6 AB = 78% XA',levels:['78 XA','1.13 AB','1.2 AB','1.27 AB','1.6 AB']}],targets:['т.Д','трендовая AC','т.С','1.27 XA','1.61 XA']},
- '4.2':{points:[{point:'т.С',hint:'38-86% AB',levels:['38','50','61','68','78','86']},{point:'т.Д',hint:'1.6-2.6 AB = 88.6% XA',levels:['88 XA','1.6 AB','2.0 AB','2.6 AB']}],targets:['т.Д','трендовая AC','т.С','1.2 XA','1.6 XA']},
- '3.1':{points:[{point:'т.С',hint:'район 23% AB',levels:['23','38']},{point:'т.Д',hint:'78% XA / 127% AB',levels:['78 XA','1.2 AB','1.27 AB']}],targets:['т.Д','трендовая AC','т.С']},
- '3.2':{points:[{point:'т.С',hint:'38-78% AB',levels:['38','50','61','78']},{point:'т.Д',hint:'1.6 XA',levels:['1.6 XA']}],targets:['т.Д','трендовая AC','т.С']},
- 'Разворот':{points:[{point:'т.В',hint:'1.13-1.6 XA',levels:['1.13 XA','1.27 XA','1.41 XA','1.6 XA']},{point:'т.С',hint:'1.6-2.4 AB',levels:['1.6 AB','2.0 AB','2.4 AB']},{point:'т.Д',hint:'1.1 / 50% BC',levels:['1.1 BC','50% BC']}],targets:['т.С','т.В','1.2 BC','1.6 BC']}
+ '4.1':{points:[{point:'т.С',hint:'38-68% AB',levels:['38','50','61','68']},{point:'т.Д',hint:'1.13-1.6 AB = 78% XA',levels:['78 XA','1.13 AB','1.2 AB','1.27 AB','1.6 AB']}],targets:['т.Д','трендовая AC','т.С','1.27 XA','1.61 XA'],byPoint:{'т.С':['т.Д (78 XA)','1.27 XA','1.61 XA'],'т.Д':['трендовая AC','т.С']}},
+ '4.2':{points:[{point:'т.С',hint:'38-86% AB',levels:['38','50','61','68','78','86']},{point:'т.Д',hint:'1.6-2.6 AB = 88.6% XA',levels:['88 XA','1.6 AB','2.0 AB','2.6 AB']}],targets:['т.Д','трендовая AC','т.С','1.2 XA','1.6 XA'],byPoint:{'т.С':['т.Д (88.6 XA)','1.2 XA','1.6 XA'],'т.Д':['трендовая AC','т.С']}},
+ '3.1':{points:[{point:'т.С',hint:'район 23% AB',levels:['23','38']},{point:'т.Д',hint:'78% XA / 127% AB',levels:['78 XA','1.2 AB','1.27 AB']}],targets:['т.Д','трендовая AC','т.С'],byPoint:{'т.С':['т.Д (78 XA / 127 AB)'],'т.Д':['трендовая AC','т.С']}},
+ '3.2':{points:[{point:'т.С',hint:'38-78% AB',levels:['38','50','61','78']},{point:'т.Д',hint:'1.6 XA',levels:['1.6 XA']}],targets:['т.Д','трендовая AC','т.С'],byPoint:{'т.С':['т.Д (1.6 XA)'],'т.Д':['трендовая AC','т.С']}},
+ 'Разворот':{points:[{point:'т.В',hint:'1.13-1.6 XA',levels:['1.13 XA','1.27 XA','1.41 XA','1.6 XA']},{point:'т.С',hint:'1.6-2.4 AB',levels:['1.6 AB','2.0 AB','2.4 AB']},{point:'т.Д',hint:'1.1 / 50% BC',levels:['1.1 BC','50% BC']}],targets:['т.С','т.В','1.2 BC','1.6 BC'],byPoint:{'т.В':['т.С 1.6 AB','т.С 2.0 AB','т.С 2.4 AB'],'т.С':['т.В','1.2 BC','1.6 BC'],'т.Д':['т.В','1.2 BC','1.6 BC']}}
 };
 function babulyaOptions(sub){
  const out=[];
@@ -1293,7 +1293,7 @@ $('#strategy').onchange=()=>{
  saveInstrumentDraft(activeInstrument);
  calcRisk()
 }
-$('#babulyaPoint').onchange=()=>{$('#babulyaLevel').value='';renderBabulyaPoint();saveInstrumentDraft(activeInstrument)};
+$('#babulyaPoint').onchange=()=>{$('#babulyaLevel').value='';form.targets=[];renderStrategy();saveInstrumentDraft(activeInstrument)};
 $('#babulyaLevel').onchange=()=>{renderBabulyaPoint();saveInstrumentDraft(activeInstrument)};
 $('#babulyaLevelOther').oninput=()=>saveInstrumentDraft(activeInstrument);
 $('#subtype').onchange=()=>{form.targets=[];renderStrategy();saveInstrumentDraft(activeInstrument);calcRisk()}
@@ -1567,7 +1567,7 @@ $('#saveTrade').onclick=()=>{
   entries:[
    {level:$('#entryLevel1').value,execution:$('#entryLevel1').value,price:num($('#entryPrice1').value),riskShare:num($('#riskShare1').value),volume:num($('#volume1').value),maxAllowedVolume:r.max1,executed:true,executedAt:nowIso()}
   ],
-  targets:[],availableTargets:availableTargetsForTrade({strategy:$('#strategy').value,method:form.method,methods:[...form.methods],subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:''}),
+  targets:[],availableTargets:availableTargetsForTrade({strategy:$('#strategy').value,method:form.method,methods:[...form.methods],subtype:$('#subtypeWrap').classList.contains('hidden')?'':$('#subtype').value,babulyaPoint:isBabulya()?$('#babulyaPoint').value:'',gridLevel:$('#strategy').value==='По сетке'?$('#gridLevel').value:''}),
 	  ot:[...form.ot],confirmations:[...form.conf],
 	  entryChecklist:{version:ENTRY_CHECKLIST_VERSION,reviewed:true,reviewedAt:nowIso(),answers:readEntryChecklist()},
 	  comment:$('#entryComment').value,
@@ -1623,7 +1623,9 @@ function availableTargetsForTrade(t){
  }else if(strategy==='Импульс'){
   add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
  }else if(strategy==='БАБУЛЯ'){
-  add('Точки бабули',babulyaSubtype(t.subtype).targets);
+  const spec=babulyaSubtype(t.subtype);
+  const byPoint=spec.byPoint&&spec.byPoint[String(t.babulyaPoint||'')];
+  add('Точки бабули',byPoint&&byPoint.length?byPoint:spec.targets);
   if(methods.includes('В')||methods.includes('В+И'))add('Цели Вульфа',['Т4','Т6']);
   if(methods.includes('И')||methods.includes('В+И'))add('Цели И',['1.2','1.6','2.0','2.4','2.6','3.6','4.23']);
  }else if(strategy==='Стата'){
