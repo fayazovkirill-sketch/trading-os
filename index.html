@@ -291,6 +291,7 @@ input,select,textarea,button{min-height:44px}
     </div>
     <div id="subtypeWrap" class="field hidden"><label>Подтип / сценарий</label><select id="subtype"></select></div>
     <div id="babulyaPointWrap" class="field hidden"><label id="babulyaPointLabel">Точка входа · схема</label><select id="babulyaPoint"></select></div>
+    <div id="babulyaLevelWrap" class="field hidden"><label id="babulyaLevelLabel">Уровень точки</label><select id="babulyaLevel"></select><input id="babulyaLevelOther" class="hidden" style="margin-top:7px" inputmode="text" placeholder="свой уровень, напр. 36% AB"></div>
     <div id="gridLevelWrap" class="field hidden"><label>Уровень присоединения</label><select id="gridLevel"><option value="1.6">1.6</option><option value="2.6">2.6</option><option value="3.6">3.6</option></select></div>
     <div class="field"><label>Способ входа</label><div class="chips" id="entryMethods"></div></div>
     <div class="field hidden" id="reentryWrap"><label>Перезаход</label><div class="row"><select id="isReentry"><option value="Нет">Нет</option><option value="Да">Да</option></select><input id="prevTradeId" placeholder="ID предыдущей"></div></div>
@@ -814,6 +815,8 @@ function saveInstrumentDraft(instrument){
   tfEntry:$('#tfEntry').value,
   entryCount:$('#entryCount').value,
   babulyaPoint:$('#babulyaPoint').value,
+  babulyaLevel:$('#babulyaLevel').value,
+  babulyaLevelOther:$('#babulyaLevelOther').value,
   entryLevel1:$('#entryLevel1').value,
   entryLevel2:$('#entryLevel2').value,
   entryLevel3:$('#entryLevel3').value,
@@ -876,6 +879,8 @@ function loadInstrumentDraft(instrument){
  const savedEntryCount=String(d.entryCount||'1');
  $('#entryCount').value=isRangeGridEntry()&&['1','2','3'].includes(savedEntryCount)?savedEntryCount:(isRangeGridEntry()?'1':savedEntryCount);
  if(d.babulyaPoint&&[...$('#babulyaPoint').options].some(o=>o.value===d.babulyaPoint))$('#babulyaPoint').value=d.babulyaPoint;
+ if(d.babulyaLevel&&[...$('#babulyaLevel').options].some(o=>o.value===d.babulyaLevel))$('#babulyaLevel').value=d.babulyaLevel;
+ if(d.babulyaLevelOther)$('#babulyaLevelOther').value=d.babulyaLevelOther;
  $('#entryLevel1').value=[...$('#entryLevel1').options].some(o=>o.value===d.entryLevel1)?d.entryLevel1:$('#entryLevel1').value;
  $('#entryLevel2').value=[...$('#entryLevel2').options].some(o=>o.value===d.entryLevel2)?d.entryLevel2:$('#entryLevel2').value;
  $('#entryLevel3').value=[...$('#entryLevel3').options].some(o=>o.value===d.entryLevel3)?d.entryLevel3:$('#entryLevel3').value;
@@ -918,12 +923,30 @@ const rules={
 };
 // --- Бабуля (ABCD). Точки входа и цели схемы по подтипам. Проценты - подсказка, приложение их не проверяет.
 const babulyaSpec={
- '4.1':{entries:[{level:'т.С',hint:'38-68% AB'},{level:'т.Д',hint:'1.13-1.6 AB = 78% XA'}],targets:['т.Д','трендовая AC','т.С','1.27 XA','1.61 XA']},
- '4.2':{entries:[{level:'т.С',hint:'38-86% AB'},{level:'т.Д',hint:'1.6-2.6 AB = 88.6% XA'}],targets:['т.Д','трендовая AC','т.С','1.2 XA','1.6 XA']},
- '3.1':{entries:[{level:'т.С',hint:'район 23% AB'},{level:'т.Д',hint:'78% XA / 127% AB'}],targets:['т.Д','трендовая AC','т.С']},
- '3.2':{entries:[{level:'т.С',hint:'38-78% AB'},{level:'т.Д',hint:'1.6 XA'}],targets:['т.Д','трендовая AC','т.С']},
- 'Разворот':{entries:[{level:'т.В',hint:'1.13-1.6 XA'},{level:'т.С',hint:'1.6-2.4 AB'},{level:'т.Д',hint:'1.1 / 50% BC'}],targets:['т.С','т.В','1.2 BC','1.6 BC']}
+ '4.1':{points:[{point:'т.С',hint:'38-68% AB',levels:['38','50','61','68']},{point:'т.Д',hint:'1.13-1.6 AB = 78% XA',levels:['78 XA','1.13 AB','1.2 AB','1.27 AB','1.6 AB']}],targets:['т.Д','трендовая AC','т.С','1.27 XA','1.61 XA']},
+ '4.2':{points:[{point:'т.С',hint:'38-86% AB',levels:['38','50','61','68','78','86']},{point:'т.Д',hint:'1.6-2.6 AB = 88.6% XA',levels:['88 XA','1.6 AB','2.0 AB','2.6 AB']}],targets:['т.Д','трендовая AC','т.С','1.2 XA','1.6 XA']},
+ '3.1':{points:[{point:'т.С',hint:'район 23% AB',levels:['23','38']},{point:'т.Д',hint:'78% XA / 127% AB',levels:['78 XA','1.2 AB','1.27 AB']}],targets:['т.Д','трендовая AC','т.С']},
+ '3.2':{points:[{point:'т.С',hint:'38-78% AB',levels:['38','50','61','78']},{point:'т.Д',hint:'1.6 XA',levels:['1.6 XA']}],targets:['т.Д','трендовая AC','т.С']},
+ 'Разворот':{points:[{point:'т.В',hint:'1.13-1.6 XA',levels:['1.13 XA','1.27 XA','1.41 XA','1.6 XA']},{point:'т.С',hint:'1.6-2.4 AB',levels:['1.6 AB','2.0 AB','2.4 AB']},{point:'т.Д',hint:'1.1 / 50% BC',levels:['1.1 BC','50% BC']}],targets:['т.С','т.В','1.2 BC','1.6 BC']}
 };
+function babulyaOptions(sub){
+ const out=[];
+ babulyaSubtype(sub).points.forEach(p=>{
+  p.levels.forEach(l=>out.push(p.point+' · '+l));
+  out.push(p.point+' · другой');
+ });
+ return out;
+}
+function babulyaLevelValue(){
+ const level=$('#babulyaLevel').value;
+ if(level!=='другой')return level;
+ const own=($('#babulyaLevelOther').value||'').trim();
+ return own?'другой · '+own:'другой';
+}
+function babulyaPointInfo(sub,value){
+ const head=String(value||'').split(' · ')[0];
+ return babulyaSubtype(sub).points.find(p=>p.point===head)||null;
+}
 function isBabulya(s=$('#strategy').value){return s==='БАБУЛЯ'}
 function babulyaSubtype(sub){return babulyaSpec[sub]||babulyaSpec['4.1']}
 function updateDay(){
@@ -1110,13 +1133,20 @@ function setSelectOptions(select,values,preferred){
 }
 function renderBabulyaPoint(){
  const wrap=$('#babulyaPointWrap'),sel=$('#babulyaPoint');
- if(!isBabulya()){wrap.classList.add('hidden');return}
+ if(!isBabulya()){wrap.classList.add('hidden');$('#babulyaLevelWrap').classList.add('hidden');return}
  wrap.classList.remove('hidden');
- const spec=babulyaSubtype($('#subtype').value);
- const levels=spec.entries.map(e=>e.level);
- setSelectOptions(sel,levels,levels.includes(sel.value)?sel.value:levels[0]);
- const e=spec.entries.find(x=>x.level===sel.value);
- $('#babulyaPointLabel').textContent='Точка входа · схема'+(e?' · '+e.hint:'');
+ const sub=$('#subtype').value;
+ const spec=babulyaSubtype(sub);
+ const points=spec.points.map(p=>p.point);
+ setSelectOptions(sel,points,points.includes(sel.value)?sel.value:points[0]);
+ const info=spec.points.find(p=>p.point===sel.value)||spec.points[0];
+ $('#babulyaPointLabel').textContent='Точка входа · схема';
+ const lw=$('#babulyaLevelWrap'),ls=$('#babulyaLevel');
+ lw.classList.remove('hidden');
+ const levels=[...info.levels,'другой'];
+ setSelectOptions(ls,levels,levels.includes(ls.value)?ls.value:levels[0]);
+ $('#babulyaLevelLabel').textContent='Уровень точки '+info.point+' · '+info.hint;
+ $('#babulyaLevelOther').classList.toggle('hidden',ls.value!=='другой');
 }
 function renderEntrySelectors(){
  const s=$('#strategy').value;
@@ -1245,7 +1275,7 @@ function renderStrategy(){
 }else if(isBabulya()){
   const sub=$('#subtype').value||'4.1';
   const spec=babulyaSubtype(sub);
-  hint.innerHTML='<b>БАБУЛЯ '+sub+':</b> точки схемы — '+spec.entries.map(e=>e.level+' ('+e.hint+')').join(' · ')+'.<br>Цели схемы: '+spec.targets.join(' → ')+'.<br>Точка схемы выбирается сверху. Уровни входов — по способу входа: И → 50 / 23 / -15, В → СЕРЧ / Лимитка, В+И → СЕРЧ / Лимитка + И. Входов может быть 1 или 2.';
+  hint.innerHTML='<b>БАБУЛЯ '+sub+':</b> точки схемы — '+spec.points.map(e=>e.point+' ('+e.hint+')').join(' · ')+'.<br>Цели схемы: '+spec.targets.join(' → ')+'.<br>Точка схемы выбирается сверху. Уровни входов — по способу входа: И → 50 / 23 / -15, В → СЕРЧ / Лимитка, В+И → СЕРЧ / Лимитка + И. Входов может быть 1 или 2.';
  }else if(isImpulseEntry()){
   hint.innerHTML='<b>Вход по И:</b> точки входа только 50 / 23 / -15. Уровень 38 — это стоп, а не точка входа.<br>Риск распределяется автоматически: 40% на дальний и 60% на ближний к стопу вход.';
  }else{
@@ -1263,7 +1293,9 @@ $('#strategy').onchange=()=>{
  saveInstrumentDraft(activeInstrument);
  calcRisk()
 }
-$('#babulyaPoint').onchange=()=>{renderBabulyaPoint();saveInstrumentDraft(activeInstrument)};
+$('#babulyaPoint').onchange=()=>{$('#babulyaLevel').value='';renderBabulyaPoint();saveInstrumentDraft(activeInstrument)};
+$('#babulyaLevel').onchange=()=>{renderBabulyaPoint();saveInstrumentDraft(activeInstrument)};
+$('#babulyaLevelOther').oninput=()=>saveInstrumentDraft(activeInstrument);
 $('#subtype').onchange=()=>{form.targets=[];renderStrategy();saveInstrumentDraft(activeInstrument);calcRisk()}
 
 $$('#modeSeg button').forEach(b=>b.onclick=()=>{
@@ -1542,6 +1574,7 @@ $('#saveTrade').onclick=()=>{
   plannedRisk:r.actual,initialRisk:Math.abs(num($('#entryPrice1').value)-startStop)*specs[$('#instrument').value].contract*num($('#volume1').value),currentRisk:Math.abs(num($('#entryPrice1').value)-startStop)*specs[$('#instrument').value].contract*num($('#volume1').value),avgPrice:num($('#entryPrice1').value),totalVolume:num($('#volume1').value),remainingVolume:num($('#volume1').value),exits:[],stops:[],
   violations:[],isReentry:$('#isReentry').value,previousTradeId:$('#prevTradeId').value,
   babulyaPoint:isBabulya()?$('#babulyaPoint').value:'',
+  babulyaLevel:isBabulya()?babulyaLevelValue():'',
   impulseReached23:'',impulseReachedMinus15:'',impulseReachedComment:''
  };
  const count=Number($('#entryCount').value||1);
@@ -2537,7 +2570,7 @@ function showDetails(id){
  <div class="exit-ledger"><b>Фактические выходы</b>${exits}</div>
  <p><b>Прибыль:</b> ${money(realizedPnl(t))}<br><b>Фиксация:</b> ${reachedTargets(t)}<br><b>Цена достигла:</b> ${priceReachedLabel(t)}<br><b>Итог:</b> ${Number(t.rResult||0).toFixed(2)}R · <b>Максимальные цели:</b> ${maxTargetsText(t)}</p>
   ${rangeEntryReviewText(t)}
- ${t.strategy==='БАБУЛЯ'?`<p><b>Точка схемы:</b> ${t.babulyaPoint||'—'} · <b>Сетап:</b> ${t.setupQuality||'—'}</p>`:''}
+ ${t.strategy==='БАБУЛЯ'?`<p><b>Точка схемы:</b> ${t.babulyaPoint||'—'}${t.babulyaLevel?' · '+t.babulyaLevel:''} · <b>Сетап:</b> ${t.setupQuality||'—'}</p>`:''}
  ${t.strategy==='Слабый'&&t.subtype==='от Т4'?`<p><b>Цена дошла до Т5:</b> ${t.reachedT5||'—'}${t.t5Comment?`<br><b>Комментарий Т5:</b> ${t.t5Comment}`:''}</p>`:''}
  <p><b>По плану:</b> ${t.byPlan||'—'}. <b>Нарушения:</b> ${(t.violations||[]).join(', ')||'нет'}</p>
  <div class="actions">
@@ -2769,7 +2802,7 @@ function tradeContextFields(t){
 }
 function exportAnalysisFiles(){
  const trades=(state.trades||[]).map(t=>({...tradeReportMeta(t),
-	  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,trade_datetime:tradeReportMeta(t).trade_datetime,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,initial_stop_level:t.initialStopLevel||'',current_stop:t.currentStop,stop_was_moved:(t.stops||[]).length>0,stop_exit_count:(t.exits||[]).filter(e=>e.reason==='Стоп').length,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],checklist_recorded:checklistRecorded(t),checklist_version:checklistRecorded(t)?t.entryChecklist.version||1:'',checklist_reviewed_at:checklistRecorded(t)?t.entryChecklist.reviewedAt||'':'',comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},scheme_point:t.babulyaPoint||'',setup_quality:t.setupQuality||'',entry_points:(t.entries||[]).map(e=>e.level).filter(Boolean),reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
+	  trade_id:t.id,app_version:t.app_version||APP_VERSION,status:t.status,trade_datetime:tradeReportMeta(t).trade_datetime,statistics_eligible:t.status==='done',mode:t.mode,time_zone:t.timezone||'local',date:t.date||'',created_at:t.createdAt||'',updated_at:t.updatedAt||t.closedAt||t.createdAt||'',closed_at:t.closedAt||'',instrument:t.instrument,direction:t.direction,strategy:t.strategy,subtype:t.subtype||'',grid_entry_level:t.gridLevel||'',grid_target:gridTargetForLevel(t.gridLevel)||'',range_grid_distribution:isRangeGridTrade(t)?'60/20/20':'',entry_level_outcomes:t.entryLevelOutcomes||{},entry_level_reviews:t.entryLevelReviews||{},entry_level_reviewed_at:t.entryLevelReviewAt||'',methods:t.methods||t.method||'',tf_setup:t.tfSetup,tf_entry:t.tfEntry,initial_stop:t.initialStop,initial_stop_level:t.initialStopLevel||'',current_stop:t.currentStop,stop_was_moved:(t.stops||[]).length>0,stop_exit_count:(t.exits||[]).filter(e=>e.reason==='Стоп').length,avg_price:t.avgPrice,total_volume:t.totalVolume,remaining_volume:t.remainingVolume,planned_risk:t.plannedRisk??t.initialRisk,reserved_risk:reservedRiskForTrade(t),initial_risk:t.initialRisk,current_risk:t.currentRisk,pnl:t.pnl??realizedPnl(t),r_result:t.rResult,ot:t.ot||[],confirmations:t.confirmations||[],checklist_recorded:checklistRecorded(t),checklist_version:checklistRecorded(t)?t.entryChecklist.version||1:'',checklist_reviewed_at:checklistRecorded(t)?t.entryChecklist.reviewedAt||'':'',comment:t.comment||'',by_plan:t.byPlan||'',violations:t.violations||[],max_targets:t.maxTargets||{},scheme_point:t.babulyaPoint||'',scheme_level:t.babulyaLevel||'',setup_quality:t.setupQuality||'',entry_points:(t.entries||[]).map(e=>e.level).filter(Boolean),reached_t5:t.reachedT5||'',impulse_reached_23:t.impulseReached23||'',impulse_reached_minus15:t.impulseReachedMinus15||'',impulse_reached_comment:t.impulseReachedComment||'',planned_entry_count:(t.entries||[]).length,pending_entry_count:pendingEntries(t).length,actual_entry_count:executedEntries(t).length,impulse_execution_corrected:!!t.impulseExecutionCorrection,is_reentry:t.isReentry||'',previous_trade_id:t.previousTradeId||''
 	 }));
 	 const entries=[];const exits=[];const stops=[];const entryOutcomes=[];const tradeOt=[];const tradeConf=[];const entryFactors=[];
  (state.trades||[]).forEach(t=>{
