@@ -1444,7 +1444,7 @@ $('#instrument').onchange=()=>{
  if(!el)return;
  const event=el.tagName==='TEXTAREA'||el.tagName==='INPUT'?'input':'change';
  el.addEventListener(event,()=>{
-  if(id.startsWith('entryLevel')&&(isRangeGridEntry()||isBabulya()))renderEntrySelectors();
+  if(id.startsWith('entryLevel')&&isRangeGridEntry())renderEntrySelectors();
   saveInstrumentDraft(activeInstrument);calcRisk()
  })
 });
